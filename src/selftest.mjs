@@ -187,6 +187,17 @@ t("agregator: odrzuca absurdalny rozrzut", () => {
   eq(parseAggregatorRows(html, "e-katalog").length, 0, "49 zl to akcesorium, nie agregat");
 });
 
+// Ceneo trzyma w data-shop numeryczne ID sklepu. Bez tej reguly w historii
+// ladowaly oferty "sklepu" o nazwie 55521.
+t("agregator: numeryczne id sklepu nie staje sie nazwa", () => {
+  const html = `<div data-shop="35585" data-price="6819"></div>
+                <div data-shop="55521" data-price="6900"></div>`;
+  const rows = parseAggregatorRows(html, "ceneo");
+  eq(rows.length, 2);
+  eq(rows[0].shop, "ceneo/nieznany");
+  eq(rows[1].shop, "ceneo/nieznany");
+});
+
 t("agregator: nie liczy samego siebie jako sklepu", () => {
   const html = `<div data-shop="e-katalog" data-price="5688"></div>
                 <div data-shop="Morele.net" data-price="5700"></div>`;

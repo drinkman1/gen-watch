@@ -13,6 +13,20 @@ import {
 function ok(offers, issues = []) { return { status: "ok", offers, issues }; }
 function fail(status, issues) { return { status, offers: [], issues }; }
 
+// Diagnostyka dla zrodel, ktore nie oddaly ceny. Bez tego "mismatch" znaczy
+// tylko "cos poszlo nie tak" i trzeba zgadywac, czy to zmiana ukladu strony,
+// czy strona-przekladaniec od ochrony antybotowej. Tytul i dlugosc odpowiedzi
+// rozstrzygaja to w jednym spojrzeniu.
+function diagnose(html, res) {
+  const out = [];
+  const t = /<title[^>]*>([\s\S]{0,200}?)<\/title>/i.exec(html || "");
+  out.push(`tytul: "${t ? decodeEntities(t[1]).trim().slice(0, 80) : "(brak)"}"`);
+  out.push(`${Math.round((html || "").length / 1024)} kB, via ${res.via}`);
+  const head = stripTags(html || "").slice(0, 120);
+  if (head) out.push(`tekst: "${head}"`);
+  return out;
+}
+
 export async function scrapeShop(product, source) {
   const res = await smartFetch(source.url, {
     needsBrowser: !!source.needsBrowser,
@@ -29,9 +43,14 @@ export async function scrapeShop(product, source) {
   const match = pageMatchesProduct(res.html, product);
   if (!match.ok) {
     // Strona wstala, ale opisuje co innego - najczesciej przekierowanie na
-    // kategorie po wygaszeniu produktu. Cena z takiej strony jest gorsza niz brak.
+    // kategorie po wygaszeniu produktu albo strona-przekladaniec od ochrony.
+    // Cena z takiej strony jest gorsza niz brak, ale POKAZUJEMY ja w raporcie:
+    // jesli wyglada sensownie, znaczy ze zawiodlo dopasowanie, a nie zrodlo.
+    const peek = extractPrice(res.html, {});
     return fail("mismatch", [
       `strona nie zawiera identyfikatora produktu${match.by ? " (kolizja z " + match.by + ")" : ""}`,
+      ...(peek.price != null ? [`odrzucona cena ze strony: ${peek.price} (${peek.method})`] : []),
+      ...diagnose(res.html, res),
     ]);
   }
 
@@ -39,7 +58,7 @@ export async function scrapeShop(product, source) {
   const got = extractPrice(res.html, { expectTokens: expect, textPattern: source.textPattern });
 
   if (got.price == null) {
-    return fail("noprice", [got.reason || "brak ceny", `warstwy wyczerpane, via ${res.via}`]);
+    return fail("noprice", [got.reason || "brak ceny", ...diagnose(res.html, res)]);
   }
 
   const issues = [];
@@ -76,7 +95,9 @@ export async function scrapeAggregator(product, source) {
   }
 
   const match = pageMatchesProduct(res.html, product);
-  if (!match.ok) return fail("mismatch", ["strona porownywarki nie dotyczy tego produktu"]);
+  if (!match.ok) {
+    return fail("mismatch", ["strona porownywarki nie dotyczy tego produktu", ...diagnose(res.html, res)]);
+  }
 
   const offers = parseAggregatorRows(res.html, source.shop);
   if (offers.length) return ok(offers, res.escalatedFrom ? ["poszlo przez Chromium"] : []);
@@ -129,6 +150,12 @@ export function parseAggregatorRows(html, aggregatorName) {
   }
 
   function push(shop, price, url) {
+    // Ceneo trzyma w data-shop numeryczne ID sklepu ("35585"), nie nazwe.
+    // Bez tego w historii ladowaly oferty sklepu o nazwie "55521", czego nie
+    // da sie ani zweryfikowac, ani klikniec.
+    if (/^\d+$/.test(String(shop).trim())) {
+      shop = url ? (hostOf(url) || aggregatorName + "/nieznany") : aggregatorName + "/nieznany";
+    }
     const key = normToken(shop) + ":" + price;
     if (seen.has(key)) return;
     // Sam agregator nie jest sklepem.
