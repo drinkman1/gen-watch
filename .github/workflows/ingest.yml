@@ -1,0 +1,104 @@
+name: gen-watch ingest
+
+# Skrzynka podawcza dla skanu przez przegladarke. Sesja Cowork zaklada Issue
+# z etykieta GEN_Scan, ten workflow parsuje jej tresc i dopisuje oferty rynku
+# wtornego do galezi data.
+#
+# BEZPIECZENSTWO: repo jest publiczne, wiec Issue moze zalozyc kazdy. Przebieg
+# przetwarza WYLACZNIE zgloszenia, ktorych autorem jest wlasciciel repo - reszta
+# konczy sie natychmiast, bez czytania tresci. Sama tresc jest traktowana jak
+# dane wejsciowe: parsowana przez JSON.parse i walidowana pole po polu, nigdy
+# wykonywana ani wstawiana do polecenia powloki.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  issues: write
+  pages: write
+  id-token: write
+
+# Ta sama grupa co skan - Pages nie znosi dwoch rownoleglych publikacji.
+concurrency:
+  group: gen-watch
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    # Podwojna bramka: etykieta i autor. Sam warunek etykiety nie wystarcza,
+    # bo w publicznym repo kazdy moze nadac sobie tytul i tresc, a przy
+    # niektorych ustawieniach takze etykiete.
+    if: >
+      github.event.issue.user.login == github.repository_owner &&
+      contains(github.event.issue.labels.*.name, 'GEN_Scan')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Testy offline
+        run: node src/selftest.mjs
+
+      - name: Pobierz dane z galezi data
+        run: |
+          if git fetch origin data:refs/remotes/origin/data 2>/dev/null; then
+            git checkout origin/data -- docs/data 2>/dev/null || echo "Galaz data bez docs/data."
+          else
+            echo "Brak galezi data - skan sklepowy jeszcze nie byl uruchomiony."
+          fi
+
+      # Tresc przez plik i zmienna srodowiskowa, nigdy przez interpolacje
+      # ${{ }} w skrypcie powloki - inaczej backtick w tresci Issue wykonalby
+      # sie jako polecenie. To jest ten klasyczny blad, ktory chcemy ominac.
+      - name: Zapis tresci do pliku
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: printf '%s' "$ISSUE_BODY" > /tmp/issue-body.md
+
+      - name: Parsowanie i zapis ofert
+        run: node src/ingest-run.mjs /tmp/issue-body.md
+
+      - name: Przebudowa dashboardu
+        run: node src/dashboard.mjs || echo "Brak latest.json - dashboard poczeka na pierwszy skan sklepowy."
+
+      - name: Komentarz i zamkniecie zgloszenia
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" --body-file /tmp/ingest-report.md
+          if [ "$(cat /tmp/ingest-accepted.txt)" != "0" ]; then
+            gh issue close "${{ github.event.issue.number }}" --reason completed
+          fi
+
+      - name: Zapis na galezi data
+        run: |
+          git config user.name "gen-watch bot"
+          git config user.email "actions@github.com"
+          git add -f docs/data
+          if git diff --staged --quiet; then
+            echo "Bez zmian w danych."
+          else
+            git commit -m "gen-watch: skan przegladarkowy #${{ github.event.issue.number }}"
+            git push --force origin HEAD:refs/heads/data
+          fi
+
+      - name: Upload dashboardu dla Pages
+        if: success()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Publikacja na GitHub Pages
+        id: pages
+        if: success()
+        uses: actions/deploy-pages@v4

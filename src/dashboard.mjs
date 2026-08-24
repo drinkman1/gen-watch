@@ -11,7 +11,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readJson, DATA_DIR, loadHistory } from "./store.mjs";
-import { median, windowPrices } from "./alerts.mjs";
+import { median, windowPrices, allTimeLow } from "./alerts.mjs";
+import { marketFile } from "./ingest.mjs";
 
 const OUT = path.join(process.cwd(), "docs", "index.html");
 const latest = readJson(path.join(DATA_DIR, "latest.json"), null);
@@ -32,8 +33,19 @@ const panels = latest.products.map((p) => {
     .filter((h) => Number.isFinite(h.t))
     .sort((a, b) => a.t - b.t);
 
-  const win = windowPrices(loadHistory(p.id), nowMs, rules.medianWindowDays);
+  const raw = loadHistory(p.id);
+  const win = windowPrices(raw, nowMs, rules.medianWindowDays);
   const med = win.length >= rules.minSamplesForMedian ? median(win) : null;
+
+  // Przy zakupie z terminem to jest wazniejsza liczba niz prog: mowi, czy
+  // dzisiejsza cena jest najlepsza, jaka widzielismy, czy tylko przecietna.
+  const low = allTimeLow(raw);
+  const lowAt = low == null ? null
+    : (raw.filter((h) => h.best && h.best.price === low).slice(-1)[0] || {}).ts || null;
+
+  const market = readJson(marketFile(p.id), null);
+  const lastScan = market && Array.isArray(market.scans) && market.scans.length
+    ? market.scans[market.scans.length - 1] : null;
 
   return {
     id: p.id,
@@ -46,9 +58,12 @@ const panels = latest.products.map((p) => {
     sources: p.sources,
     alerted: p.alerted,
     median: med,
+    low,
+    lowAt,
     series: history,
     specSource: p.specSource,
     specNote: p.specNote,
+    market: lastScan ? { ts: lastScan.ts, offers: lastScan.offers } : null,
   };
 });
 
@@ -57,6 +72,7 @@ const payload = {
   run: latest.run,
   alerts: latest.alerts,
   rules,
+  deadline: cfg.meta.deadline || null,
   panels,
 };
 
@@ -168,7 +184,8 @@ function render(data) {
   <h1>gen-watch</h1>
   <p class="sub">Ostatni skan: <b>${esc(runStamp)}</b> · status: <b>${esc(statusWord)}</b> ·
      zrodla ok ${data.run.sourcesOk}/${data.run.sourcesOk + data.run.sourcesBad}
-     ${data.run.runUrl ? `· <a href="${esc(data.run.runUrl)}">przebieg</a>` : ""}</p>
+     ${data.run.runUrl ? `· <a href="${esc(data.run.runUrl)}">przebieg</a>` : ""}
+     <span id="deadline"></span></p>
   <div id="banner"></div>
   <div class="grid" id="grid"></div>
   <footer id="foot"></footer>
@@ -181,6 +198,15 @@ const zl = (n) => n == null || !isFinite(n) ? "—"
   : n.toLocaleString("pl-PL",{maximumFractionDigits:0}) + " zł";
 const esc = (s) => String(s==null?"":s).replace(/[&<>"']/g, c =>
   ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// --- termin zakupu ---------------------------------------------------------
+(function(){
+  if (!D.deadline) return;
+  const left = Math.ceil((Date.parse(D.deadline) - Date.parse(D.generatedAt)) / 86400000);
+  const el = document.getElementById("deadline");
+  if (left > 0) el.innerHTML = ' · do zakupu <b>' + left + ' dni</b>';
+  else el.innerHTML = ' · <b>termin zakupu minal</b>';
+})();
 
 // --- baner alertow ---------------------------------------------------------
 (function(){
@@ -223,15 +249,59 @@ function card(p){
     + ' · prog ' + zl(p.threshold) + '</p>'
     + '<div class="now"><span class="price">' + zl(best && best.price) + '</span>'
     + '<span class="delta' + (d >= 0.5 ? " down" : "") + '">' + esc(deltaTxt) + '</span></div>'
-    + '<p class="where">' + (best ? esc(best.shop) + (best.availability ? " · " + esc(best.availability) : "") : "brak ceny w tym przebiegu") + '</p>';
+    + '<p class="where">' + (best ? esc(best.shop) + (best.availability ? " · " + esc(best.availability) : "") : "brak ceny w tym przebiegu") + '</p>'
+    + lowLine(p);
+
+  function lowLine(p){
+    if (p.low == null) return '';
+    const isNow = best && best.price <= p.low;
+    if (isNow) return '<p class="where"><b>To najtaniej, odkad obserwujemy.</b></p>';
+    const when = p.lowAt ? new Date(p.lowAt).toLocaleDateString("pl-PL",{day:"numeric",month:"short"}) : null;
+    return '<p class="where">Najtaniej dotad: <b>' + zl(p.low) + '</b>'
+      + (when ? ' (' + when + ')' : '') + '</p>';
+  }
 
   const fig = document.createElement("figure");
   fig.appendChild(chart(p));
   el.appendChild(fig);
 
   el.appendChild(offersTable(p));
+  el.appendChild(marketTable(p));
   el.appendChild(sourceLog(p));
   return el;
+}
+
+// Rynek wtorny z toru B. Celowo osobna tabela, nie punkty na wykresie:
+// uzywany egzemplarz i nowa sztuka ze sklepu to dwa rozne rynki, a wrzucenie
+// ogloszenia za 3 000 zl do historii cen nowych wywrociloby mediane i minimum.
+function marketTable(p){
+  const d = document.createElement("details");
+  if (!p.market){
+    d.innerHTML = '<summary>Rynek wtorny — <span class="warn">brak skanu</span></summary>'
+      + '<p class="empty">Skan przez przegladarke jeszcze tu nic nie dolozyl. '
+      + 'Ten tor dziala tylko przy wlaczonym komputerze.</p>';
+    return d;
+  }
+  const ageH = Math.round((Date.parse(D.generatedAt) - Date.parse(p.market.ts)) / 3600000);
+  const stale = ageH > 24;
+  const ageTxt = ageH < 1 ? "przed chwila" : ageH < 48 ? ageH + " h temu"
+    : Math.round(ageH/24) + " dni temu";
+
+  d.innerHTML = '<summary>Rynek wtorny (' + p.market.offers.length + ') — '
+    + '<span class="' + (stale ? "warn" : "flag") + '">' + ageTxt + '</span></summary>';
+
+  const rows = p.market.offers.slice().sort((a,b) => a.price - b.price).map(o =>
+    '<tr><td>' + (o.url ? '<a href="' + esc(o.url) + '">' + esc(o.site) + '</a>' : esc(o.site))
+    + ' <span class="flag">' + esc(o.condition === "used" ? "uzywany" : o.condition === "new" ? "nowy" : "?") + '</span></td>'
+    + '<td class="num">' + zl(o.price) + '</td>'
+    + '<td>' + esc(o.location || "—") + (o.distanceKm != null ? ' <span class="flag">~' + o.distanceKm + ' km</span>' : '') + '</td>'
+    + '<td class="flag">' + esc(o.note || o.title || "") + '</td></tr>').join("");
+
+  d.innerHTML += '<table><thead><tr><th>Serwis</th><th class="num">Cena</th>'
+    + '<th>Lokalizacja</th><th>Uwagi</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + (stale ? '<p class="flag warn" style="margin-top:6px">Te dane sa nieswieze — '
+      + 'ogloszenia z drugiej reki znikaja szybciej niz raz na dobe.</p>' : '');
+  return d;
 }
 
 // Wykres liniowy, jedna seria. Prog i mediana to adnotacje w tuszu

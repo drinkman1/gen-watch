@@ -49,21 +49,74 @@ Dla każdego z pięciu modeli:
    Sklepy i sprzedający notorycznie przekręcają zapis — „KS 8100iE G" to KS 8100iEG.
 4. **Specyfikacja tylko od producenta.** Z ogłoszenia bierz cenę, stan i lokalizację.
 
-## Co zrobić z wynikiem
+## Co zrobić z wynikiem — Issue jako skrzynka podawcza
 
-1. Dopisz przebieg do `AGREGATY/browser-scans/<data>.json` w podłączonym folderze.
-   Ten plik NIE trafia do repo — patrz ograniczenie niżej.
-2. Jeśli któraś oferta schodzi poniżej progu z `config/products.json`: wyślij maila
-   i napisz w rozmowie. Podaj cenę, lokalizację, dystans od Grodziska i to, czego
-   w ogłoszeniu brakuje.
-3. Jeśli nic nie schodzi poniżej progu: jedno zdanie i koniec. Bez raportu.
+Wyniki wracają do repo przez **Issue**, nie przez token. Sesja Cowork nie ma i nie
+potrzebuje żadnych poświadczeń: zapis wykonuje workflow `ingest`, który żyje
+kilkanaście sekund i znika. Autoryzacją jest zalogowana sesja GitHuba w Chrome —
+ta sama przeglądarka, która i tak robi skan.
 
-## Ograniczenie, o którym trzeba pamiętać
+1. Zbuduj ładunek. Dokładnie ten kształt, inaczej workflow odrzuci zgłoszenie:
 
-Wyniki tego toru **nie trafiają na dashboard**. Sesja Cowork nie ma poświadczeń do
-zapisu w repo, a dashboard buduje się na GitHub Actions z danych, które tam leżą.
-Historia cen na dashboardzie pokazuje więc wyłącznie sklepy z toru A.
+   ~~~
+   ```json
+   {
+     "scan": "2026-08-24T05:00:00Z",
+     "offers": [
+       {
+         "productId": "ks-8100ieg",
+         "site": "olx",
+         "price": 4200,
+         "condition": "used",
+         "url": "https://www.olx.pl/oferta/...",
+         "location": "Żyrardów",
+         "distanceKm": 22,
+         "note": "350 mth, faktura, odpalany przy mnie"
+       }
+     ]
+   }
+   ```
+   ~~~
 
-Żeby to zmienić, trzeba by wpuścić do sesji token GitHuba o wąskim zakresie. To
-jedna dodatkowa ruchoma część i jeden sekret na dysku — dlatego domyślnie tego nie
-robimy, a nie dlatego, że się nie da.
+   `productId` musi pochodzić z `config/products.json`. `site`: `olx`,
+   `allegro`, `allegro-lokalnie`, `ceneo` albo `inne`. `condition`: `new`,
+   `used`, `unknown` — `damaged` jest przyjmowane i celowo pomijane przy zapisie.
+
+2. Otwórz w Chrome adres z wypełnionym formularzem (title, body i etykieta w
+   parametrach zapytania), sprawdź podgląd i kliknij **Submit new issue**:
+
+   ```
+   https://github.com/drinkman1/gen-watch/issues/new?labels=GEN_Scan&title=Skan+przegladarkowy&body=<ładunek zakodowany URL-em>
+   ```
+
+   Etykieta `GEN_Scan` jest obowiązkowa — bez niej workflow nie ruszy. Jeśli
+   ładunek nie mieści się w adresie, załóż puste Issue z etykietą i wklej blok
+   w treści; `edited` też wyzwala przebieg.
+
+3. Workflow odpowie komentarzem: ile ofert przyjął, co odrzucił i dlaczego, oraz
+   które schodzą poniżej progu. Przy udanym imporcie sam zamyka zgłoszenie.
+   Przeczytaj ten komentarz — jest jedynym potwierdzeniem, że dane doszły.
+
+4. Niezależnie od Issue: jeśli coś schodzi poniżej progu, napisz o tym w rozmowie
+   i wyślij maila. Nie każ użytkownikowi czekać na przebieg Actions.
+
+5. Jeśli nic nie schodzi poniżej progu — jedno zdanie i koniec. Bez raportu.
+
+## Dlaczego oferty z drugiej ręki nie wchodzą do historii cen
+
+Rynek wtórny jest trzymany osobno, w `docs/data/market/`, i pokazywany jako osobna
+tabela pod wykresem. Powód jest praktyczny: używany egzemplarz za 3 000 zł
+wywróciłby medianę i minimum historyczne, a potem każdy nowy agregat wyglądałby na
+absurdalnie drogi i wyzwalacze przestałyby cokolwiek znaczyć.
+
+Z tego samego powodu przy rynku wtórnym działa **wyłącznie próg sztywny**. Mediana
+z trzech ogłoszeń na kwartał to nie jest statystyka, tylko przypadek.
+
+## Bezpieczeństwo
+
+Repo jest publiczne, więc Issue może założyć każdy. Workflow przetwarza wyłącznie
+zgłoszenia, których autorem jest właściciel repo, i tylko z etykietą `GEN_Scan` —
+reszta kończy się natychmiast, bez czytania treści. Sama treść jest danymi: idzie
+przez `JSON.parse`, jest walidowana pole po polu i nigdy nie trafia do polecenia
+powłoki ani do `eval`. Adresy inne niż `https://` są odrzucane, bo ta treść ląduje
+później w HTML dashboardu.

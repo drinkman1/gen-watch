@@ -3,6 +3,8 @@
     "comment": "Punkt odniesienia dla ofert uzywanych. Celowo srodek Grodziska Mazowieckiego, nie adres domowy - przy promieniu 100 km roznica jest bez znaczenia, a repo jest publiczne.",
     "origin": { "name": "Grodzisk Mazowiecki", "lat": 52.1094, "lon": 20.6242 },
     "usedRadiusKm": 100,
+    "deadline": "2026-11-22",
+    "deadlineNote": "Zakup ma sie odbyc w ciagu ~90 dni od 24.08.2026. Dashboard liczy pozostale dni i pokazuje najnizsza cene w calej obserwacji - przy terminie liczy sie nie tylko to, czy cena spadla ponizej progu, ale tez czy juz kiedys byla nizsza.",
     "alertRules": {
       "medianWindowDays": 30,
       "medianDropPct": 7,

@@ -88,14 +88,38 @@ albo pusty szkielet.
 
 ## Czego ten bot NIE robi
 
-- **Nie chodzi na Allegro, OLX ani Allegro Lokalnie.** Te serwisy blokują adresy IP
-  centrów danych, a runnery GitHuba stoją w Azure. Obsługuje je osobny tor przez
-  przeglądarkę na maszynie użytkownika — patrz `BROWSER-SCAN.md`.
+- **Sam nie chodzi na Allegro, OLX ani Allegro Lokalnie.** Te serwisy blokują adresy
+  IP centrów danych, a runnery GitHuba stoją w Azure. Obsługuje je osobny tor przez
+  przeglądarkę na maszynie użytkownika, a wyniki wracają tu przez Issue —
+  patrz `BROWSER-SCAN.md`.
 - **Nie czyta specyfikacji ze sklepów.** Sklepowe parametry rozjeżdżają się z
   danymi producenta. Ze sklepów bierzemy wyłącznie cenę i dostępność; specyfikacja
   pochodzi z `konner-sohnen.pl` i `fogo.pl`, a link do niej jest przy każdym modelu.
 - **Nie ocenia, czy warto kupić.** Podaje cenę, koszt końcowy i historię. Decyzja
   jest po stronie człowieka.
+
+## Dwa tory, jedno miejsce
+
+| | Tor A — sklepy | Tor B — rynek wtórny |
+|---|---|---|
+| Gdzie działa | GitHub Actions, co 3 h | Chrome na laptopie, 7:00 i 18:00 |
+| Co obejmuje | e-katalog, sklepy, Ceneo | Allegro, OLX, Allegro Lokalnie |
+| Niezależny od laptopa | tak | nie |
+| Zapis do repo | bezpośrednio | przez Issue z etykietą `GEN_Scan` |
+| Wyzwalacze alertu | wszystkie trzy | tylko próg sztywny |
+| Gdzie ląduje | `docs/data/history/` | `docs/data/market/` |
+
+Żaden z torów nie wymaga sekretu. Tor A pisze `GITHUB_TOKEN`-em przebiegu, tor B —
+przez workflow `ingest`, wyzwalany zgłoszeniem założonym z zalogowanej przeglądarki.
+
+## Termin zakupu
+
+`config/products.json` ma pole `meta.deadline`. Dashboard liczy od niego pozostałe
+dni i przy każdym modelu pokazuje **najniższą cenę w całej obserwacji**. Przy zakupie
+z terminem to jest ważniejsza liczba niż próg: mówi, czy dzisiejsza cena jest
+najlepsza, jaką widzieliśmy, czy tylko przeciętna. Może się zdarzyć, że przez cały
+okres obserwacji nie padnie ani jeden alert — wtedy decyzją jest „kupuję po
+najlepszej cenie, jaką widziałem", a nie „czekam dalej".
 
 ## Diagnostyka
 

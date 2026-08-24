@@ -10,6 +10,7 @@ import {
 } from "./extract.mjs";
 import { parseAggregatorRows } from "./adapters/index.mjs";
 import { evaluate, median, allTimeLow, windowPrices, effectiveCost, DAY } from "./alerts.mjs";
+import { extractBlock, validate, marketAlerts } from "./ingest.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -280,6 +281,106 @@ t("alert: po oknie ciszy odpala ponownie", () => {
 t("alert: brak ceny nie wybucha", () => {
   const r = evaluate(PROD, null, hist([5000]), RULES, {}, NOW);
   eq(r.fire, false);
+});
+
+// --- skrzynka podawcza (tor B) ---------------------------------------------
+
+const IDS = new Set(["ks-8100ieg", "fogo-f8001isg"]);
+const body = (o) => "Skan przez przegladarke\n\n```json\n" + JSON.stringify(o) + "\n```\n";
+
+t("ingest: wyciaga blok json", () => {
+  const r = extractBlock(body({ scan: "2026-09-01T05:00:00Z", offers: [] }));
+  truthy(r.ok);
+  eq(r.data.scan, "2026-09-01T05:00:00Z");
+});
+
+t("ingest: brak bloku to blad, nie wyjatek", () => {
+  eq(extractBlock("zwykly tekst bez niczego").ok, false);
+  eq(extractBlock("").ok, false);
+  eq(extractBlock(null).ok, false);
+});
+
+t("ingest: zepsuty json to blad, nie wyjatek", () => {
+  eq(extractBlock("```json\n{niepoprawny}\n```").ok, false);
+});
+
+t("ingest: poprawna oferta przechodzi", () => {
+  const v = validate({ scan: "2026-09-01T05:00:00Z", offers: [
+    { productId: "ks-8100ieg", site: "olx", price: 4200, condition: "used",
+      url: "https://olx.pl/x", location: "Zyrardow", distanceKm: 25, note: "350 mth" },
+  ]}, IDS);
+  truthy(v.ok);
+  eq(v.offers.length, 1);
+  eq(v.offers[0].price, 4200);
+});
+
+t("ingest: nieznane productId odpada, reszta przechodzi", () => {
+  const v = validate({ scan: "2026-09-01T05:00:00Z", offers: [
+    { productId: "nie-ma-takiego", site: "olx", price: 4200 },
+    { productId: "ks-8100ieg", site: "olx", price: 4300 },
+  ]}, IDS);
+  eq(v.offers.length, 1);
+  truthy(v.errors.some((e) => e.includes("nieznane productId")));
+});
+
+t("ingest: cena poza zakresem odpada", () => {
+  const v = validate({ scan: "2026-09-01T05:00:00Z", offers: [
+    { productId: "ks-8100ieg", site: "olx", price: 5 },
+    { productId: "ks-8100ieg", site: "olx", price: 999999 },
+    { productId: "ks-8100ieg", site: "olx", price: "nie liczba" },
+  ]}, IDS);
+  eq(v.offers.length, 0);
+});
+
+t("ingest: oferta oznaczona jako uszkodzona jest pomijana", () => {
+  const v = validate({ scan: "2026-09-01T05:00:00Z", offers: [
+    { productId: "ks-8100ieg", site: "olx", price: 2000, condition: "damaged" },
+  ]}, IDS);
+  eq(v.offers.length, 0);
+});
+
+// Tresc Issue idzie prosto do HTML dashboardu, wiec musi byc oczyszczona
+// juz na wejsciu, a nie dopiero przy renderowaniu.
+t("ingest: url musi byc https i rozsadnej dlugosci", () => {
+  const v = validate({ scan: "2026-09-01T05:00:00Z", offers: [
+    { productId: "ks-8100ieg", site: "olx", price: 4200, url: "javascript:alert(1)" },
+    { productId: "fogo-f8001isg", site: "olx", price: 4300, url: "http://olx.pl/x" },
+  ]}, IDS);
+  eq(v.offers.length, 2);
+  eq(v.offers[0].url, null, "javascript: musi zostac odrzucone");
+  eq(v.offers[1].url, null, "http bez s tez");
+});
+
+t("ingest: nieznany serwis ladue jako 'inne'", () => {
+  const v = validate({ scan: "2026-09-01T05:00:00Z", offers: [
+    { productId: "ks-8100ieg", site: "gumtree", price: 4200 },
+  ]}, IDS);
+  eq(v.offers[0].site, "inne");
+});
+
+t("ingest: absurdalnie duze zgloszenie odrzucone w calosci", () => {
+  const offers = Array.from({ length: 201 }, () => ({ productId: "ks-8100ieg", site: "olx", price: 4200 }));
+  eq(validate({ scan: "2026-09-01T05:00:00Z", offers }, IDS).ok, false);
+});
+
+t("ingest: alert tylko ponizej progu", () => {
+  const prods = [{ id: "ks-8100ieg", name: "KS 8100iEG", hardThreshold: 5400 }];
+  const offers = [
+    { productId: "ks-8100ieg", site: "olx", price: 5300, condition: "used" },
+    { productId: "ks-8100ieg", site: "olx", price: 5600, condition: "used" },
+  ];
+  const a = marketAlerts(offers, prods, {}, NOW, 24);
+  eq(a.length, 1);
+  eq(a[0].price, 5300);
+});
+
+t("ingest: ta sama oferta nie alarmuje dwa razy w oknie ciszy", () => {
+  const prods = [{ id: "ks-8100ieg", name: "KS 8100iEG", hardThreshold: 5400 }];
+  const offers = [{ productId: "ks-8100ieg", site: "olx", price: 5300 }];
+  const state = {};
+  eq(marketAlerts(offers, prods, state, NOW, 24).length, 1);
+  eq(marketAlerts(offers, prods, state, NOW + 3600000, 24).length, 0);
+  eq(marketAlerts(offers, prods, state, NOW + 30 * 3600000, 24).length, 1);
 });
 
 // --- konfiguracja -----------------------------------------------------------
