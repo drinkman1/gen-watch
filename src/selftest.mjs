@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   parsePrice, normToken, fromJsonLd, fromMicrodata, fromMeta, fromText,
-  extractPrice, pageMatchesProduct,
+  extractPrice, pageMatchesProduct, fromPriceAttrs, priceBounds,
 } from "./extract.mjs";
 import { parseAggregatorRows } from "./adapters/index.mjs";
 import { evaluate, median, allTimeLow, windowPrices, effectiveCost, DAY } from "./alerts.mjs";
@@ -146,6 +146,55 @@ t("warstwy: schodzi do meta gdy brak jsonld", () => {
 
 t("warstwy: pusto gdy nic nie ma", () => {
   eq(extractPrice("<html><body>nic tu nie ma</body></html>", {}).price, null);
+});
+
+// --- warstwa atrybutow i widelki --------------------------------------------
+
+// Ta warstwa powstala, bo Tooles i Lewor oddaja poprawna strone produktu bez
+// JSON-LD, microdata i og:price. Jest z zalozenia zgadywaniem, wiec jej
+// jedynym zabezpieczeniem sa widelki - stad tyle testow wokol nich.
+
+t("widelki: liczone z ceny bazowej", () => {
+  eq(priceBounds(5688), { min: 2560, max: 14220 });
+  eq(priceBounds(0), { min: null, max: null });
+  eq(priceBounds(null), { min: null, max: null });
+});
+
+t("priceattr: cena z klasy price", () => {
+  const html = `<span class="product-price">5 299,00 zł</span>`;
+  eq(fromPriceAttrs(html, 2560, 14220).price, 5299);
+});
+
+t("priceattr: cena z data-price obok klasy price", () => {
+  const html = `<div class="price-box" data-price="5299.00"></div>`;
+  eq(fromPriceAttrs(html, 2560, 14220).price, 5299);
+});
+
+t("priceattr: bez widelek nie zgaduje w ogole", () => {
+  eq(fromPriceAttrs(`<span class="price">5299</span>`, null, null), null);
+});
+
+// Bez tego rata leasingu ("od 149 zl/mies.") wygladalaby jak okazja stulecia.
+t("priceattr: rata i koszt dostawy odpadaja na widelkach", () => {
+  const html = `<span class="price-installment">149,00 zł</span>
+                <span class="price">5 299,00 zł</span>`;
+  eq(fromPriceAttrs(html, 2560, 14220).price, 5299, "musi przeskoczyc rate");
+});
+
+t("warstwy: priceattr dopiero po meta", () => {
+  const html = `<meta property="og:price:amount" content="5100"/><span class="price">5 299 zł</span>`;
+  eq(extractPrice(html, { min: 2560, max: 14220 }).method, "meta");
+});
+
+t("warstwy: widelki odrzucaja bzdurna cene i mowia o tym wprost", () => {
+  const html = `<meta property="og:price:amount" content="49"/>`;
+  const r = extractPrice(html, { min: 2560, max: 14220 });
+  eq(r.price, null);
+  truthy(r.reason.includes("poza widelkami"), "powod musi nazywac widelki: " + r.reason);
+});
+
+t("warstwy: bez widelek zachowanie jak dawniej", () => {
+  eq(extractPrice(`<meta property="og:price:amount" content="49"/>`, {}).price, 49);
 });
 
 // --- dopasowanie strony do produktu ----------------------------------------

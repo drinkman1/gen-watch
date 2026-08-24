@@ -75,16 +75,21 @@ regex z konfiguracji sklepu. Każda cena niesie ze sobą `method`, więc w rapor
 widać, na czym bot się oparł. Cena z warstwy tekstowej jest oznaczana jako
 podejrzana.
 
-**Warstwa zwiadu** — `e-katalog.pl`. Oddaje listę kilkunastu sklepów zwykłym HTTP,
-bez Cloudflare, i wyłapuje sklepy spoza naszej listy. Dla KS 8100iE ATSR znalazł
-Tooles.pl po 4 999 zł, którego nie było w pierwotnym zestawie.
+**Warstwa atrybutów** — dla sklepów bez danych strukturalnych (Tooles, Lewor) cena
+jest szukana w elementach z „price" w klasie, id albo `data-*`. To z definicji
+zgadywanie, więc działa **wyłącznie w widełkach** wyliczonych z ceny bazowej
+(0,45× – 2,5×). Bez nich pierwsza lepsza liczba na stronie — rata leasingu, koszt
+dostawy — wyglądałaby jak okazja. Widełki obowiązują wszystkie warstwy, nie tylko tę.
 
-**Warstwa best-effort** — Ceneo. Oznaczona `bestEffort: true`, więc jej awaria nie
-czerwieni raportu.
+Strony renderowane po stronie klienta (KupAgregat, Alnar) idą przez Chromium.
+Zwykły `fetch` eskaluje do przeglądarki sam, gdy dostanie 403/406/429 albo pusty
+szkielet.
 
-Strony renderowane po stronie klienta (Komputronik, Amazon, KupAgregat) idą przez
-Chromium. Zwykły `fetch` eskaluje do przeglądarki sam, gdy dostanie 403/406/429
-albo pusty szkielet.
+**Czego tu nie ma, a było w planie:** `e-katalog.pl`, Ceneo, Amazon i Komputronik.
+Pierwszy przebieg na Actions pokazał, że wszystkie cztery oddają runnerowi w Azure
+stronę „Cierpliwości… Przeprowadzanie weryfikacji zabezpieczeń" — również przez
+Chromium. Przeniesione do toru przeglądarkowego. To boli najbardziej przy
+e-katalogu, bo był zaplanowany jako główna warstwa zwiadu.
 
 ## Czego ten bot NIE robi
 
@@ -103,7 +108,7 @@ albo pusty szkielet.
 | | Tor A — sklepy | Tor B — rynek wtórny |
 |---|---|---|
 | Gdzie działa | GitHub Actions, co 3 h | Chrome na laptopie, 7:00 i 18:00 |
-| Co obejmuje | e-katalog, sklepy, Ceneo | Allegro, OLX, Allegro Lokalnie |
+| Co obejmuje | sklepy bezpośrednio | Allegro, OLX, Allegro Lokalnie, e-katalog, Ceneo, Amazon, Komputronik |
 | Niezależny od laptopa | tak | nie |
 | Zapis do repo | bezpośrednio | przez Issue z etykietą `GEN_Scan` |
 | Wyzwalacze alertu | wszystkie trzy | tylko próg sztywny |

@@ -28,12 +28,28 @@ się przy pierwszej zmianie.
 
 Dla każdego z pięciu modeli:
 
-| Serwis | Czego szukać |
-|---|---|
-| Allegro | po EAN dla trzech modeli K&S; po nazwie dla dwóch Fogo |
-| OLX | po nazwie modelu, promień **100 km od Grodziska Mazowieckiego** |
-| Allegro Lokalnie | jak OLX |
-| Ceneo | strona produktu, lista sklepów |
+| Serwis | Czego szukać | Dlaczego tutaj |
+|---|---|---|
+| Allegro | po EAN dla trzech modeli K&S; po nazwie dla dwóch Fogo | blokuje IP centrów danych |
+| OLX | po nazwie modelu, promień **100 km od Grodziska Mazowieckiego** | jw. |
+| Allegro Lokalnie | jak OLX | jw. |
+| **e-katalog.pl** | strona produktu, pełna lista sklepów z cenami | Cloudflare — potwierdzone 24.08.2026 |
+| Ceneo | strona produktu, lista sklepów | jw. |
+| Amazon.pl | KS 8100iEG, uwzględnij rabat 4% | interstycjał „Kontynuuj zakupy" |
+| Komputronik | KS 8100iE ATSR | Cloudflare |
+
+Cztery ostatnie pozycje trafiły tu **po pierwszym przebiegu na Actions**, nie z założenia.
+Wszystkie oddały runnerowi w Azure stronę „Cierpliwości… Przeprowadzanie weryfikacji
+zabezpieczeń", nawet przez Chromium. Z Twojego łącza otwierają się normalnie.
+
+**e-katalog jest z nich najważniejszy** — to jedyne źródło, które podaje ceny
+kilkunastu sklepów naraz i wyłapuje sklepy spoza listy. Bez niego tor A widzi tylko
+te sklepy, które ktoś wpisał ręcznie do konfiguracji.
+
+Uwaga przy e-katalogu, Ceneo, Amazonie i Komputroniku: to są **sklepy z nowym
+towarem**, więc w ładunku ustaw `"condition": "new"`. Trafią do tej samej tabeli co
+oferty z drugiej ręki i tak samo odpalą alert po przekroczeniu progu — ale nie
+wejdą do wykresu historii cen, bo ten należy do toru A.
 
 ## Reguły oceny
 

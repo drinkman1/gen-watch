@@ -277,7 +277,7 @@ function card(p){
 function marketTable(p){
   const d = document.createElement("details");
   if (!p.market){
-    d.innerHTML = '<summary>Rynek wtorny — <span class="warn">brak skanu</span></summary>'
+    d.innerHTML = '<summary>Skan przegladarkowy — <span class="warn">brak danych</span></summary>'
       + '<p class="empty">Skan przez przegladarke jeszcze tu nic nie dolozyl. '
       + 'Ten tor dziala tylko przy wlaczonym komputerze.</p>';
     return d;
@@ -287,7 +287,7 @@ function marketTable(p){
   const ageTxt = ageH < 1 ? "przed chwila" : ageH < 48 ? ageH + " h temu"
     : Math.round(ageH/24) + " dni temu";
 
-  d.innerHTML = '<summary>Rynek wtorny (' + p.market.offers.length + ') — '
+  d.innerHTML = '<summary>Skan przegladarkowy (' + p.market.offers.length + ') — '
     + '<span class="' + (stale ? "warn" : "flag") + '">' + ageTxt + '</span></summary>';
 
   const rows = p.market.offers.slice().sort((a,b) => a.price - b.price).map(o =>

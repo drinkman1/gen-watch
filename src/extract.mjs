@@ -213,7 +213,45 @@ export function fromMeta(html) {
   return null;
 }
 
-// --- warstwa 4: regex po tekscie (ostatnia deska ratunku) -------------------
+// --- warstwa 4: atrybuty z "price" w nazwie ---------------------------------
+
+// Sklepy na PrestaShop/WooCommerce/IdoSell czesto nie wystawiaja ani JSON-LD,
+// ani microdata, ale cena prawie zawsze siedzi w elemencie, ktory ma "price"
+// w klasie, id albo atrybucie data-*. Sama ta heurystyka bylaby niebezpieczna
+// (rata leasingu, cena przekreslona, koszt dostawy), dlatego dziala WYLACZNIE
+// z widelkami: wartosc poza zakresem wyliczonym z ceny bazowej jest odrzucana.
+// Bez widelek ta warstwa wpuscilaby do historii pierwsza lepsza liczbe.
+export function fromPriceAttrs(html, min, max) {
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+
+  // Najpierw atrybuty niosace wartosc wprost - te sa najpewniejsze.
+  const attrRe = /(?:data-(?:product-)?price(?:-amount)?|content)\s*=\s*["']([\d\s.,]{3,15})["'][^>]{0,120}?(?:class|id)\s*=\s*["'][^"']*price/gi;
+  const revRe = /(?:class|id)\s*=\s*["'][^"']*price[^"']*["'][^>]{0,200}?(?:data-(?:product-)?price(?:-amount)?|content)\s*=\s*["']([\d\s.,]{3,15})["']/gi;
+  for (const re of [attrRe, revRe]) {
+    let m;
+    while ((m = re.exec(html))) {
+      const v = parsePrice(m[1]);
+      if (v != null && v >= min && v <= max) {
+        return { price: v, currency: "PLN", availability: null, name: null };
+      }
+    }
+  }
+
+  // Potem tekst tuz za znacznikiem z "price" w nazwie.
+  const tagRe = /<([a-z]+)\b[^>]*(?:class|id|itemprop)\s*=\s*["'][^"']*price[^"']*["'][^>]*>([\s\S]{0,160}?)<\/\1>/gi;
+  let m;
+  while ((m = tagRe.exec(html))) {
+    const txt = stripTags(m[2]);
+    const num = /(\d[\d\s\u00a0\u202f.,]{2,14})/.exec(txt);
+    const v = num ? parsePrice(num[1]) : null;
+    if (v != null && v >= min && v <= max) {
+      return { price: v, currency: "PLN", availability: null, name: null };
+    }
+  }
+  return null;
+}
+
+// --- warstwa 5: regex po tekscie (ostatnia deska ratunku) -------------------
 
 // Wymaga jawnego wzorca z konfiguracji sklepu. Bez niego NIE zgadujemy -
 // pierwsza liczba ze slowem "zl" na stronie to rownie czesto rata leasingu,
@@ -229,22 +267,41 @@ export function fromText(html, pattern) {
 
 // --- orkiestracja -----------------------------------------------------------
 
-export function extractPrice(html, { expectTokens = [], textPattern = null } = {}) {
+// Widelki wiarygodnosci liczone z ceny bazowej. Sklep moze byc o polowe tanszy
+// albo o 150% drozszy - ale cena 49 zl przy agregacie za 5 000 to akcesorium,
+// a 90 000 to literowka albo zlepek dwoch liczb. Zakres jest szeroki celowo:
+// ma odsiewac bzdury, nie prawdziwe promocje.
+export function priceBounds(baseline) {
+  if (!Number.isFinite(baseline) || baseline <= 0) return { min: null, max: null };
+  return { min: Math.round(baseline * 0.45), max: Math.round(baseline * 2.5) };
+}
+
+export function extractPrice(html, { expectTokens = [], textPattern = null, min = null, max = null } = {}) {
   if (!html || typeof html !== "string") return { price: null, method: null, reason: "brak HTML" };
+
+  const inRange = (v) =>
+    (min == null || v >= min) && (max == null || v <= max);
 
   const attempts = [
     ["jsonld", () => fromJsonLd(html, expectTokens)],
     ["microdata", () => fromMicrodata(html)],
     ["meta", () => fromMeta(html)],
+    ["priceattr", () => fromPriceAttrs(html, min, max)],
     ["text", () => fromText(html, textPattern)],
   ];
 
+  const rejected = [];
   for (const [method, fn] of attempts) {
     let r = null;
     try { r = fn(); } catch { r = null; }
-    if (r && r.price != null) return { ...r, method, reason: null };
+    if (!r || r.price == null) continue;
+    if (!inRange(r.price)) { rejected.push(`${method}=${r.price}`); continue; }
+    return { ...r, method, reason: null };
   }
-  return { price: null, method: null, reason: "zadna warstwa nie znalazla ceny" };
+  const why = rejected.length
+    ? `cena poza widelkami ${min}-${max} (${rejected.join(", ")})`
+    : "zadna warstwa nie znalazla ceny";
+  return { price: null, method: null, reason: why };
 }
 
 // Czy strona w ogole dotyczy tego produktu. Uzywane, gdy sklep podmieni URL

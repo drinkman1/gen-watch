@@ -1,6 +1,6 @@
 import { smartFetch } from "../fetch.mjs";
 import {
-  extractPrice, pageMatchesProduct, parsePrice, stripTags, decodeEntities, normToken,
+  extractPrice, pageMatchesProduct, parsePrice, stripTags, decodeEntities, normToken, priceBounds,
 } from "../extract.mjs";
 
 // Kazdy adapter zwraca liste ofert w jednym ksztalcie:
@@ -55,7 +55,8 @@ export async function scrapeShop(product, source) {
   }
 
   const expect = [product.ean, ...(product.matchTokens || [])].filter(Boolean);
-  const got = extractPrice(res.html, { expectTokens: expect, textPattern: source.textPattern });
+  const { min, max } = priceBounds(product.baseline);
+  const got = extractPrice(res.html, { expectTokens: expect, textPattern: source.textPattern, min, max });
 
   if (got.price == null) {
     return fail("noprice", [got.reason || "brak ceny", ...diagnose(res.html, res)]);
@@ -63,6 +64,7 @@ export async function scrapeShop(product, source) {
 
   const issues = [];
   if (got.method === "text") issues.push("cena z warstwy tekstowej - traktuj z rezerwa");
+  if (got.method === "priceattr") issues.push("cena z atrybutu HTML, nie z danych strukturalnych");
   if (got.matchedExpected === false) issues.push("JSON-LD nie potwierdzil nazwy produktu");
   if (res.escalatedFrom) issues.push(`zwykly fetch odbity (${res.escalatedFrom}), poszlo przez Chromium`);
 
@@ -103,8 +105,9 @@ export async function scrapeAggregator(product, source) {
   if (offers.length) return ok(offers, res.escalatedFrom ? ["poszlo przez Chromium"] : []);
 
   const expect = [product.ean, ...(product.matchTokens || [])].filter(Boolean);
-  const got = extractPrice(res.html, { expectTokens: expect });
-  if (got.price == null) return fail("noprice", ["ani wierszy sklepow, ani ceny zbiorczej"]);
+  const { min, max } = priceBounds(product.baseline);
+  const got = extractPrice(res.html, { expectTokens: expect, min, max });
+  if (got.price == null) return fail("noprice", ["ani wierszy sklepow, ani ceny zbiorczej", got.reason]);
 
   return ok([{
     shop: source.shop,
