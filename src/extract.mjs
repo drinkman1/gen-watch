@@ -222,7 +222,12 @@ export function fromMeta(html) {
 // z widelkami: wartosc poza zakresem wyliczonym z ceny bazowej jest odrzucana.
 // Bez widelek ta warstwa wpuscilaby do historii pierwsza lepsza liczbe.
 export function fromPriceAttrs(html, min, max) {
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return { price: null, rejected: [] };
+
+  // Kandydaci poza widelkami sa zapamietywani, a nie po cichu gubieni. Bez tego
+  // raport mowil "zadna warstwa nie znalazla ceny" w sytuacji, gdy warstwa
+  // znalazla 18 559 zl i slusznie ja odrzucila - a to dwie rozne diagnozy.
+  const rejected = [];
 
   // Najpierw atrybuty niosace wartosc wprost - te sa najpewniejsze.
   const attrRe = /(?:data-(?:product-)?price(?:-amount)?|content)\s*=\s*["']([\d\s.,]{3,15})["'][^>]{0,120}?(?:class|id)\s*=\s*["'][^"']*price/gi;
@@ -231,9 +236,11 @@ export function fromPriceAttrs(html, min, max) {
     let m;
     while ((m = re.exec(html))) {
       const v = parsePrice(m[1]);
-      if (v != null && v >= min && v <= max) {
-        return { price: v, currency: "PLN", availability: null, name: null };
+      if (v == null) continue;
+      if (v >= min && v <= max) {
+        return { price: v, currency: "PLN", availability: null, name: null, rejected };
       }
+      rejected.push(v);
     }
   }
 
@@ -244,11 +251,13 @@ export function fromPriceAttrs(html, min, max) {
     const txt = stripTags(m[2]);
     const num = /(\d[\d\s\u00a0\u202f.,]{2,14})/.exec(txt);
     const v = num ? parsePrice(num[1]) : null;
-    if (v != null && v >= min && v <= max) {
-      return { price: v, currency: "PLN", availability: null, name: null };
+    if (v == null) continue;
+    if (v >= min && v <= max) {
+      return { price: v, currency: "PLN", availability: null, name: null, rejected };
     }
+    rejected.push(v);
   }
-  return null;
+  return { price: null, rejected };
 }
 
 // --- warstwa 5: regex po tekscie (ostatnia deska ratunku) -------------------
@@ -267,26 +276,46 @@ export function fromText(html, pattern) {
 
 // --- orkiestracja -----------------------------------------------------------
 
-// Widelki wiarygodnosci liczone z ceny bazowej. Sklep moze byc o polowe tanszy
-// albo o 150% drozszy - ale cena 49 zl przy agregacie za 5 000 to akcesorium,
-// a 90 000 to literowka albo zlepek dwoch liczb. Zakres jest szeroki celowo:
-// ma odsiewac bzdury, nie prawdziwe promocje.
+// Widelki wiarygodnosci liczone z ceny bazowej. Dolna granica jest luzna, bo po
+// to jest caly ten bot - prawdziwa promocja ma prawo zejsc gleboko. Gorna jest
+// ciasna, bo powyzej dwukrotnosci ceny bazowej nie ma juz nic wartego uwagi:
+// bierzemy i tak minimum, wiec drozsza oferta niczego nie wnosi, a jesli jest
+// bledem parsowania - smieci raport.
+//
+// Gorna granica byla poczatkowo 2,5x i przepuscila 18 559,66 zl przy Fogo F 8001
+// (cena bazowa 8 999) z warstwy atrybutowej u Lewora. Stad 2,0x.
 export function priceBounds(baseline) {
   if (!Number.isFinite(baseline) || baseline <= 0) return { min: null, max: null };
-  return { min: Math.round(baseline * 0.45), max: Math.round(baseline * 2.5) };
+  return { min: Math.round(baseline * 0.45), max: Math.round(baseline * 2.0) };
 }
 
-export function extractPrice(html, { expectTokens = [], textPattern = null, min = null, max = null } = {}) {
+// Warstwa atrybutowa zgaduje, wiec dostaje wezsze widelki niz dane
+// strukturalne. Cena z HTML-a powyzej 1,5x bazy to prawie na pewno zlepek
+// dwoch liczb albo inny produkt z tej samej strony.
+export function guessBounds(baseline) {
+  if (!Number.isFinite(baseline) || baseline <= 0) return { min: null, max: null };
+  return { min: Math.round(baseline * 0.55), max: Math.round(baseline * 1.5) };
+}
+
+export function extractPrice(html, {
+  expectTokens = [], textPattern = null, min = null, max = null,
+  guessMin = null, guessMax = null,
+} = {}) {
   if (!html || typeof html !== "string") return { price: null, method: null, reason: "brak HTML" };
 
-  const inRange = (v) =>
-    (min == null || v >= min) && (max == null || v <= max);
+  const gMin = guessMin != null ? guessMin : min;
+  const gMax = guessMax != null ? guessMax : max;
+  const inRange = (v, method) => {
+    const lo = method === "priceattr" ? gMin : min;
+    const hi = method === "priceattr" ? gMax : max;
+    return (lo == null || v >= lo) && (hi == null || v <= hi);
+  };
 
   const attempts = [
     ["jsonld", () => fromJsonLd(html, expectTokens)],
     ["microdata", () => fromMicrodata(html)],
     ["meta", () => fromMeta(html)],
-    ["priceattr", () => fromPriceAttrs(html, min, max)],
+    ["priceattr", () => fromPriceAttrs(html, gMin, gMax)],
     ["text", () => fromText(html, textPattern)],
   ];
 
@@ -294,8 +323,11 @@ export function extractPrice(html, { expectTokens = [], textPattern = null, min 
   for (const [method, fn] of attempts) {
     let r = null;
     try { r = fn(); } catch { r = null; }
+    if (r && r.price == null && Array.isArray(r.rejected) && r.rejected.length) {
+      for (const v of r.rejected.slice(0, 3)) rejected.push(`${method}=${v}`);
+    }
     if (!r || r.price == null) continue;
-    if (!inRange(r.price)) { rejected.push(`${method}=${r.price}`); continue; }
+    if (!inRange(r.price, method)) { rejected.push(`${method}=${r.price}`); continue; }
     return { ...r, method, reason: null };
   }
   const why = rejected.length

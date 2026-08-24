@@ -1,6 +1,6 @@
 import { smartFetch } from "../fetch.mjs";
 import {
-  extractPrice, pageMatchesProduct, parsePrice, stripTags, decodeEntities, normToken, priceBounds,
+  extractPrice, pageMatchesProduct, parsePrice, stripTags, decodeEntities, normToken, priceBounds, guessBounds,
 } from "../extract.mjs";
 
 // Kazdy adapter zwraca liste ofert w jednym ksztalcie:
@@ -56,7 +56,11 @@ export async function scrapeShop(product, source) {
 
   const expect = [product.ean, ...(product.matchTokens || [])].filter(Boolean);
   const { min, max } = priceBounds(product.baseline);
-  const got = extractPrice(res.html, { expectTokens: expect, textPattern: source.textPattern, min, max });
+  const g = guessBounds(product.baseline);
+  const got = extractPrice(res.html, {
+    expectTokens: expect, textPattern: source.textPattern,
+    min, max, guessMin: g.min, guessMax: g.max,
+  });
 
   if (got.price == null) {
     return fail("noprice", [got.reason || "brak ceny", ...diagnose(res.html, res)]);

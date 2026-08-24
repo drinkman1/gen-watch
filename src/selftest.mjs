@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   parsePrice, normToken, fromJsonLd, fromMicrodata, fromMeta, fromText,
-  extractPrice, pageMatchesProduct, fromPriceAttrs, priceBounds,
+  extractPrice, pageMatchesProduct, fromPriceAttrs, priceBounds, guessBounds,
 } from "./extract.mjs";
 import { parseAggregatorRows } from "./adapters/index.mjs";
 import { evaluate, median, allTimeLow, windowPrices, effectiveCost, DAY } from "./alerts.mjs";
@@ -155,40 +155,66 @@ t("warstwy: pusto gdy nic nie ma", () => {
 // jedynym zabezpieczeniem sa widelki - stad tyle testow wokol nich.
 
 t("widelki: liczone z ceny bazowej", () => {
-  eq(priceBounds(5688), { min: 2560, max: 14220 });
+  eq(priceBounds(5688), { min: 2560, max: 11376 });
   eq(priceBounds(0), { min: null, max: null });
   eq(priceBounds(null), { min: null, max: null });
 });
 
+t("widelki: warstwa zgadujaca ma wezsze niz strukturalna", () => {
+  const b = priceBounds(8999), g = guessBounds(8999);
+  truthy(g.min > b.min && g.max < b.max, "zgadywanie musi miec ciasniejszy zakres");
+});
+
+// Prawdziwy blad z przebiegu 24.08.2026: Lewor oddal 18 559,66 zl przy Fogo
+// F 8001 iSG (baza 8 999). Stara gorna granica 2,5x to przepuscila.
+t("widelki: 18559 przy bazie 8999 odpada z warstwy atrybutowej", () => {
+  const g = guessBounds(8999);
+  const html = `<span class="price">18 559,66 zł</span>`;
+  eq(fromPriceAttrs(html, g.min, g.max).price, null);
+  const b = priceBounds(8999);
+  const r = extractPrice(html, { min: b.min, max: b.max, guessMin: g.min, guessMax: g.max });
+  eq(r.price, null);
+  truthy(r.reason.includes("18559.66"), "raport ma nazwac odrzucona wartosc: " + r.reason);
+});
+
+// ...ale prawdziwa cena Toolesa (6 499 przy bazie 5 688) ma przejsc.
+t("widelki: 6499 przy bazie 5688 przechodzi", () => {
+  const g = guessBounds(5688), b = priceBounds(5688);
+  const html = `<span class="price">6 499,00 zł</span>`;
+  const r = extractPrice(html, { min: b.min, max: b.max, guessMin: g.min, guessMax: g.max });
+  eq(r.price, 6499);
+  eq(r.method, "priceattr");
+});
+
 t("priceattr: cena z klasy price", () => {
   const html = `<span class="product-price">5 299,00 zł</span>`;
-  eq(fromPriceAttrs(html, 2560, 14220).price, 5299);
+  eq(fromPriceAttrs(html, 2560, 11376).price, 5299);
 });
 
 t("priceattr: cena z data-price obok klasy price", () => {
   const html = `<div class="price-box" data-price="5299.00"></div>`;
-  eq(fromPriceAttrs(html, 2560, 14220).price, 5299);
+  eq(fromPriceAttrs(html, 2560, 11376).price, 5299);
 });
 
 t("priceattr: bez widelek nie zgaduje w ogole", () => {
-  eq(fromPriceAttrs(`<span class="price">5299</span>`, null, null), null);
+  eq(fromPriceAttrs(`<span class="price">5299</span>`, null, null).price, null);
 });
 
 // Bez tego rata leasingu ("od 149 zl/mies.") wygladalaby jak okazja stulecia.
 t("priceattr: rata i koszt dostawy odpadaja na widelkach", () => {
   const html = `<span class="price-installment">149,00 zł</span>
                 <span class="price">5 299,00 zł</span>`;
-  eq(fromPriceAttrs(html, 2560, 14220).price, 5299, "musi przeskoczyc rate");
+  eq(fromPriceAttrs(html, 2560, 11376).price, 5299, "musi przeskoczyc rate");
 });
 
 t("warstwy: priceattr dopiero po meta", () => {
   const html = `<meta property="og:price:amount" content="5100"/><span class="price">5 299 zł</span>`;
-  eq(extractPrice(html, { min: 2560, max: 14220 }).method, "meta");
+  eq(extractPrice(html, { min: 2560, max: 11376 }).method, "meta");
 });
 
 t("warstwy: widelki odrzucaja bzdurna cene i mowia o tym wprost", () => {
   const html = `<meta property="og:price:amount" content="49"/>`;
-  const r = extractPrice(html, { min: 2560, max: 14220 });
+  const r = extractPrice(html, { min: 2560, max: 11376 });
   eq(r.price, null);
   truthy(r.reason.includes("poza widelkami"), "powod musi nazywac widelki: " + r.reason);
 });
