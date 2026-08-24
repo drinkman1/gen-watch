@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export const DATA_DIR = path.join(process.cwd(), "docs", "data");
+// Skan lokalny pracuje na osobnym, plytkim klonie galezi data, zeby nigdy nie
+// dotykac drzewa roboczego uzytkownika. Stad mozliwosc przekierowania.
+export const DATA_DIR = process.env.GEN_WATCH_DATA_DIR
+  ? path.resolve(process.env.GEN_WATCH_DATA_DIR)
+  : path.join(process.cwd(), "docs", "data");
 export const HIST_DIR = path.join(DATA_DIR, "history");
 
 export function ensureDirs() {

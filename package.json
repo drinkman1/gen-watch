@@ -8,6 +8,8 @@
     "scan": "node src/scan.mjs",
     "scan:one": "node src/scan.mjs --product",
     "dry": "node src/scan.mjs --dry-run --dump",
+    "local": "node src/scan-local.mjs",
+    "local:dry": "node src/scan-local.mjs --dry",
     "dashboard": "node src/dashboard.mjs",
     "check": "node src/selftest.mjs"
   },

@@ -101,9 +101,19 @@ export async function browserFetch(url, { timeoutMs = 40000, waitFor = null } = 
 
 // Zwykly fetch, a gdy odbije sie od ochrony albo odda pusty szkielet - Chromium.
 export async function smartFetch(url, { needsBrowser = false, waitFor = null } = {}) {
-  if (needsBrowser) return browserFetch(url, { waitFor });
+  // Skan lokalny leci bez Chromium - na maszynie uzytkownika pakiet playwright
+  // jest, ale binarka przegladarki juz nie, a instalowanie jej tylko po to,
+  // zeby zapytac o cene, byloby absurdem. Bez tej flagi kazde zrodlo
+  // needsBrowser konczylo sie krzykliwym "Playwright niedostepny".
+  const noBrowser = process.env.GEN_WATCH_NO_BROWSER === "1";
+  if (needsBrowser) {
+    if (noBrowser) return { ok: false, status: 0, html: "", finalUrl: url, via: "fetch",
+      error: "zrodlo wymaga przegladarki, a skan lokalny jej nie uzywa" };
+    return browserFetch(url, { waitFor });
+  }
 
   const r = await plainFetch(url);
+  if (noBrowser) return r;
   const blocked = !r.ok && [401, 403, 406, 429, 503].includes(r.status);
   const thin = r.ok && r.html && r.html.length < 2000;
   if (blocked || thin || (!r.ok && r.status === 0)) {

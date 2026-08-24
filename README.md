@@ -103,19 +103,51 @@ e-katalogu, bo był zaplanowany jako główna warstwa zwiadu.
 - **Nie ocenia, czy warto kupić.** Podaje cenę, koszt końcowy i historię. Decyzja
   jest po stronie człowieka.
 
-## Dwa tory, jedno miejsce
+## Trzy tory, jedno miejsce
 
-| | Tor A — sklepy | Tor B — rynek wtórny |
-|---|---|---|
-| Gdzie działa | GitHub Actions, co 3 h | Chrome na laptopie, 7:00 i 18:00 |
-| Co obejmuje | sklepy bezpośrednio | Allegro, OLX, Allegro Lokalnie, e-katalog, Ceneo, Amazon, Komputronik |
-| Niezależny od laptopa | tak | nie |
-| Zapis do repo | bezpośrednio | przez Issue z etykietą `GEN_Scan` |
-| Wyzwalacze alertu | wszystkie trzy | tylko próg sztywny |
-| Gdzie ląduje | `docs/data/history/` | `docs/data/market/` |
+| | Tor A — sklepy | Tor B1 — skan lokalny | Tor B2 — rynek wtórny |
+|---|---|---|---|
+| Gdzie działa | GitHub Actions, co 3 h | skrypt Node na Windowsie | Chrome na laptopie, na żądanie |
+| Co obejmuje | sklepy bezpośrednio | e-katalog, Ceneo, Amazon, Komputronik | Allegro, OLX, Allegro Lokalnie |
+| Potrzebuje laptopa | nie | tak (włączonego) | tak (z sesją Claude) |
+| Potrzebuje przeglądarki | nie | **nie** | tak |
+| Zapis do repo | bezpośrednio | bezpośrednio, poświadczeniami gita | przez Issue `GEN_Scan` |
+| Wyzwalacze alertu | wszystkie trzy | tylko próg sztywny | tylko próg sztywny |
+| Gdzie ląduje | `docs/data/history/` | `docs/data/market/` | `docs/data/market/` |
 
-Żaden z torów nie wymaga sekretu. Tor A pisze `GITHUB_TOKEN`-em przebiegu, tor B —
-przez workflow `ingest`, wyzwalany zgłoszeniem założonym z zalogowanej przeglądarki.
+Podział na B1 i B2 powstał po awarii 24.08.2026: zaplanowane zadanie w chmurze nie ma
+dostępu ani do Chrome'a, ani do lokalnych serwerów MCP, więc tor przeglądarkowy nie
+mógł działać bez nadzoru. Okazało się przy tym, że **e-katalog i Ceneo nie potrzebują
+przeglądarki — potrzebują adresu IP z domowego łącza.** Stąd B1: te same parsery,
+uruchamiane lokalnie, bez modelu i bez przeglądarki.
+
+Allegro i OLX zostają w B2 na żądanie, bo tam i tak potrzebna jest ocena człowieka —
+motogodziny, rok, stan. Skrypt tego nie rozstrzygnie.
+
+## Skan lokalny — uruchomienie
+
+Najpierw jeden test bez zapisu, żeby sprawdzić, czy ochrona antybotowa przepuszcza
+Twój adres:
+
+```
+cd "%USERPROFILE%\Documents\CLAUDE cowork\AGREGATY\gen-watch"
+node src/scan-local.mjs --dry
+```
+
+Jeśli w powodach zobaczysz „Cierpliwości" albo „weryfikacja zabezpieczeń", znaczy że
+Cloudflare odrzuca także łącza domowe i ten tor nie ma sensu — wtedy zostaje B2.
+
+Gdy test wypadnie dobrze, podepnij `skan-lokalny.bat` pod Harmonogram zadań Windows
+(dwa razy dziennie, np. 7:00 i 18:00, z opcją „Uruchom niezależnie od tego, czy
+użytkownik jest zalogowany"). Skrypt:
+
+- klonuje gałąź `data` do `.local-data/` — **drzewo robocze zostaje nietknięte**;
+- czyta ceny tymi samymi warstwami co tor A, z tymi samymi widełkami;
+- dopisuje oferty do `docs/data/market/` i wypycha na gałąź `data`;
+- loguje wszystko do `skan-lokalny.log`.
+
+Dashboard na Pages odświeży się przy najbliższym przebiegu Actions, czyli w ciągu
+trzech godzin — skrypt lokalny celowo nie dotyka publikacji.
 
 ## Termin zakupu
 
