@@ -1,0 +1,20 @@
+{
+  "name": "gen-watch",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Monitoring cen 5 agregatow pradotworczych. Actions co 3h + dashboard na GitHub Pages.",
+  "scripts": {
+    "scan": "node src/scan.mjs",
+    "scan:one": "node src/scan.mjs --product",
+    "dry": "node src/scan.mjs --dry-run --dump",
+    "dashboard": "node src/dashboard.mjs",
+    "check": "node src/selftest.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.49.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

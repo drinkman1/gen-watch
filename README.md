@@ -1,0 +1,120 @@
+# gen-watch
+
+Monitoring cen pięciu agregatów prądotwórczych. Skan co 3 godziny na GitHub Actions,
+alert przez Issue (GitHub wysyła za nie maila), dashboard z historią cen na GitHub Pages.
+
+Bliźniak `role-watch` — ten sam układ gałęzi, ten sam mechanizm powiadomień, ta sama
+zasada „bot nigdy nie dotyka `main`".
+
+## Co śledzi
+
+| Model | EAN | Cena bazowa | Próg sztywny |
+|---|---|---|---|
+| Könner & Söhnen KS 8100iE ATSR | 4260405364725 | 4 999 zł | < 4 800 zł |
+| Könner & Söhnen KS 8100iEG | 4260405364817 | 5 688 zł | < 5 400 zł |
+| Könner & Söhnen KS 9500iE S ATSR | 4260405367184 | 9 859 zł | < 9 300 zł |
+| Fogo F 8001 iSG | brak | 8 999 zł | < 8 500 zł |
+| Fogo F 12000 iSG | brak | 11 998 zł | < 11 300 zł |
+
+Fogo nie publikuje EAN-ów — ani na stronie producenta, ani w kartach produktu.
+Dla tych dwóch modeli dopasowanie idzie po znormalizowanej nazwie na **zamkniętej
+liście URL-i**, nigdy na dziko. Numer `1000001714707` widoczny u profimarketu to
+wewnętrzny identyfikator sklepu, nie GTIN — nie używać.
+
+## Kiedy leci alert
+
+Trzy niezależne wyzwalacze, alert przy **którymkolwiek**:
+
+1. **Próg sztywny** — cena poniżej kwoty z tabeli wyżej.
+2. **Mediana** — cena o 7% niżej niż mediana z 30 dni. Rusza dopiero po ośmiu
+   pomiarach; wcześniej nie ma z czego liczyć i wyzwalacz milczy.
+3. **Nowe minimum** — taniej niż kiedykolwiek wcześniej w historii.
+
+Ta sama cena w tym samym sklepie nie alarmuje ponownie przez 24 h. Bez tego przy
+skanie co 3 h jedna promocja dawałaby osiem maili dziennie.
+
+Pierwszy przebieg nigdy nie alarmuje — inaczej start bota wysyłałby pięć powiadomień
+„nowe minimum" na dzień dobry.
+
+**Alert porównuje cenę katalogową, nie koszt końcowy.** Progi pochodzą z cen
+katalogowych, więc doliczanie dostawy cicho przesunęłoby każdy z nich o 100–200 zł.
+Koszt końcowy (z dostawą i rabatem, gdy są znane) jest liczony i pokazywany w
+dashboardzie oraz w treści alertu — ale to człowiek go ocenia, nie bot.
+
+## Uruchomienie od zera
+
+1. Załóż **publiczne** repo `gen-watch` na GitHubie.
+2. Z katalogu z tymi plikami:
+   ```
+   git remote add origin https://github.com/<login>/gen-watch.git
+   git push -u origin main
+   ```
+3. Settings → Pages → Source: **GitHub Actions**. Bez tego krok publikacji padnie.
+4. Actions → gen-watch → **Run workflow**. Pierwszy przebieg zbuduje baseline.
+5. Dashboard: `https://<login>.github.io/gen-watch/`
+
+Żadnych sekretów. Powiadomienia idą przez Issue przypisane do właściciela repo,
+a maila wysyła sam GitHub — dlatego nie ma tu hasła do skrzynki.
+
+## Zmiana progów i modeli
+
+Wszystko siedzi w `config/products.json`. Po każdej zmianie:
+
+```
+npm run check
+```
+
+Testy pilnują, że próg jest niższy od ceny bazowej, że każdy model ma co najmniej
+jedno źródło niebędące `best-effort` i że wszystkie URL-e są na https.
+
+## Skąd biorą się ceny
+
+**Warstwa pewna** — bezpośrednie strony sklepów. Cena czytana warstwowo:
+JSON-LD `Product/offers` → microdata `itemprop="price"` → `og:price:amount` →
+regex z konfiguracji sklepu. Każda cena niesie ze sobą `method`, więc w raporcie
+widać, na czym bot się oparł. Cena z warstwy tekstowej jest oznaczana jako
+podejrzana.
+
+**Warstwa zwiadu** — `e-katalog.pl`. Oddaje listę kilkunastu sklepów zwykłym HTTP,
+bez Cloudflare, i wyłapuje sklepy spoza naszej listy. Dla KS 8100iE ATSR znalazł
+Tooles.pl po 4 999 zł, którego nie było w pierwotnym zestawie.
+
+**Warstwa best-effort** — Ceneo. Oznaczona `bestEffort: true`, więc jej awaria nie
+czerwieni raportu.
+
+Strony renderowane po stronie klienta (Komputronik, Amazon, KupAgregat) idą przez
+Chromium. Zwykły `fetch` eskaluje do przeglądarki sam, gdy dostanie 403/406/429
+albo pusty szkielet.
+
+## Czego ten bot NIE robi
+
+- **Nie chodzi na Allegro, OLX ani Allegro Lokalnie.** Te serwisy blokują adresy IP
+  centrów danych, a runnery GitHuba stoją w Azure. Obsługuje je osobny tor przez
+  przeglądarkę na maszynie użytkownika — patrz `BROWSER-SCAN.md`.
+- **Nie czyta specyfikacji ze sklepów.** Sklepowe parametry rozjeżdżają się z
+  danymi producenta. Ze sklepów bierzemy wyłącznie cenę i dostępność; specyfikacja
+  pochodzi z `konner-sohnen.pl` i `fogo.pl`, a link do niej jest przy każdym modelu.
+- **Nie ocenia, czy warto kupić.** Podaje cenę, koszt końcowy i historię. Decyzja
+  jest po stronie człowieka.
+
+## Diagnostyka
+
+`status: degraded` znaczy „padło źródło, na którym polegamy" — awaria źródła
+`best-effort` do tego nie wystarcza. `status: error` znaczy „któryś model nie ma
+w ogóle ceny" i kończy przebieg kodem 1.
+
+Zero ofert przy statusie `ok` to poprawny wynik („sprawdzone, nie ma"). Zero ofert
+przy statusie `blocked` znaczy „nie wiemy". Zlanie tych dwóch przypadków w jedno
+było najczęstszym błędem w `role-watch` i tutaj są rozdzielone.
+
+Podgląd bez zapisu:
+
+```
+npm run dry
+```
+
+Jeden model:
+
+```
+npm run scan:one -- ks-8100ieg
+```

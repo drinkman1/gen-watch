@@ -1,0 +1,182 @@
+name: gen-watch
+
+on:
+  schedule:
+    # Co 3 godziny. GitHub uruchamia zadania z opoznieniem rzedu kilkunastu minut
+    # przy duzym obciazeniu - to normalne i nie jest awaria.
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      product:
+        description: "Tylko jeden model (id z config/products.json). Puste = wszystkie."
+        required: false
+        default: ""
+      dry_run:
+        description: "Nie zapisuj historii ani alertow - sam podglad"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: gen-watch
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalacja zaleznosci
+        run: npm install --no-audit --no-fund
+
+      - name: Testy offline
+        run: npm run check
+
+      - name: Instalacja Chromium dla Playwright
+        run: npx playwright install --with-deps chromium
+
+      # Historia mieszka na galezi "data", zeby bot nigdy nie dotykal main.
+      # Dokladnie ten sam uklad co w role-watch - sprawdzony, nie wymyslam nowego.
+      - name: Pobierz historie z galezi data
+        run: |
+          if git fetch origin data:refs/remotes/origin/data 2>/dev/null; then
+            git checkout origin/data -- docs/data 2>/dev/null \
+              && echo "Wczytano historie cen." \
+              || echo "Galaz data istnieje, ale bez docs/data - traktuje jako pierwszy przebieg."
+          else
+            echo "Brak galezi data - pierwszy przebieg, historia bedzie pusta."
+          fi
+
+      - name: Skan cen
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.product }}" ]; then ARGS="$ARGS --product ${{ inputs.product }}"; fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run --dump"; fi
+          node src/scan.mjs $ARGS
+
+      - name: Budowa dashboardu
+        if: success()
+        run: node src/dashboard.mjs
+
+      - name: Podsumowanie w logu przebiegu
+        if: always()
+        run: |
+          if [ ! -f docs/data/latest.json ]; then
+            echo "Brak docs/data/latest.json - skan nie doszedl do zapisu." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node -e '
+            const fs = require("fs");
+            const d = JSON.parse(fs.readFileSync("docs/data/latest.json","utf8"));
+            const zl = (n) => n == null ? "—" : Number(n).toLocaleString("pl-PL") + " zl";
+            // Pionowa kreska w nazwie sklepu rozwala tabele markdown.
+            const cell = (s) => String(s == null ? "" : s).replace(/\|/g, "/");
+            const L = [`## gen-watch — ${d.run.status}`, ""];
+            L.push(`Zrodla ok: **${d.run.sourcesOk}/${d.run.sourcesOk + d.run.sourcesBad}** · alerty: **${d.run.alerts}**`, "");
+            L.push("| Model | Najtaniej | Sklep | Prog | Historia |", "|---|---|---|---|---|");
+            for (const p of d.products) {
+              L.push(`| ${cell(p.name)} | ${zl(p.best && p.best.price)} | ${cell(p.best && p.best.shop)} | ${zl(p.hardThreshold)} | ${p.historyPoints} |`);
+            }
+            const bad = d.products.flatMap(p => p.sources.filter(s => s.status !== "ok")
+              .map(s => `- ${p.name} / ${s.shop}: \`${s.status}\`${s.bestEffort ? " (best-effort)" : ""} — ${s.issues.join("; ")}`));
+            if (bad.length) L.push("", "### Zrodla do sprawdzenia", ...bad);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, L.join("\n") + "\n");
+          '
+
+      # Powiadomienie idzie przez Issue, nie przez SMTP - dokladnie jak w
+      # role-watch. Zaden sekret nie jest potrzebny, a maila wysyla sam GitHub
+      # za issue przypisane do wlasciciela.
+      - name: Alert jako Issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -f docs/data/latest.json ]; then exit 0; fi
+          COUNT=$(node -p 'JSON.parse(require("fs").readFileSync("docs/data/latest.json","utf8")).alerts.length')
+          if [ "$COUNT" = "0" ]; then echo "Brak alertow - nie zakladam issue."; exit 0; fi
+
+          node -e '
+            const fs = require("fs");
+            const d = JSON.parse(fs.readFileSync("docs/data/latest.json","utf8"));
+            const zl = (n) => n == null ? "—" : Number(n).toLocaleString("pl-PL") + " zl";
+            const cell = (s) => String(s == null ? "" : s).replace(/\|/g, "/");
+            const L = [];
+            L.push("| Model | Cena | Sklep | Dlaczego alert | Baza |", "|---|---|---|---|---|");
+            for (const a of d.alerts) {
+              L.push(`| [${cell(a.name)}](${a.url}) | **${zl(a.price)}** | ${cell(a.shop)} | ${cell(a.reasons.map(r => r.text).join(" · "))} | ${zl(a.baseline)} |`);
+            }
+            L.push("", `Koszt koncowy (z dostawa i rabatem, gdy znane): ${d.alerts.map(a => zl(a.effective.cost) + (a.effective.shippingKnown ? "" : " bez dostawy")).join(" · ")}`);
+            L.push("", "Alert porownuje **cene katalogowa** - progi pochodza z cen katalogowych. Koszt koncowy sprawdz sam przed zakupem.");
+            if (d.run.runUrl) L.push("", `Przebieg: ${d.run.runUrl}`);
+            fs.writeFileSync("/tmp/body.md", L.join("\n"));
+
+            const best = d.alerts.reduce((a, b) => (b.price < a.price ? b : a));
+            const date = new Date().toISOString().slice(0, 10);
+            const n = d.alerts.length;
+            // Odmiana: 1 model, 2-4 modele, 5+ modeli.
+            const t = n % 10, h = n % 100;
+            const noun = n === 1 ? "model" : (t >= 2 && t <= 4 && (h < 12 || h > 14)) ? "modele" : "modeli";
+            fs.writeFileSync("/tmp/title.txt",
+              `[GEN_Alert] ${n} ${noun} ponizej progu - ${best.name} za ${zl(best.price)} (${date})`);
+          '
+
+          # Etykieta musi istniec zanim jej uzyjemy - gh nie tworzy jej w locie.
+          gh label create "GEN_Alert" --color "d03b3b" --description "Cena agregatu ponizej progu" </dev/null >/dev/null 2>&1 || true
+
+          gh issue create \
+            --title "$(cat /tmp/title.txt)" \
+            --body-file /tmp/body.md \
+            --assignee "${{ github.repository_owner }}" \
+            --label "GEN_Alert"
+
+      # success(), nie always(): przerwany przebieg ma niekompletne dane i nie
+      # moze nadpisac historii.
+      - name: Zapis historii na galezi data
+        if: success()
+        run: |
+          git config user.name "gen-watch bot"
+          git config user.email "actions@github.com"
+          git add -f docs/data
+          if git diff --staged --quiet; then
+            echo "Bez zmian w danych."
+          else
+            git commit -m "gen-watch: snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push --force origin HEAD:refs/heads/data
+            echo "Historia zapisana na galezi data. main nietkniety."
+          fi
+
+      - name: Upload dashboardu dla Pages
+        if: success()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Publikacja na GitHub Pages
+        id: pages
+        if: success()
+        uses: actions/deploy-pages@v4
+
+      - name: Dashboard tez jako artefakt przebiegu
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard
+          path: docs/index.html
+          if-no-files-found: warn
+          retention-days: 30
