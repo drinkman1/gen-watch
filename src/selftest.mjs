@@ -223,6 +223,14 @@ t("warstwy: bez widelek zachowanie jak dawniej", () => {
   eq(extractPrice(`<meta property="og:price:amount" content="49"/>`, {}).price, 49);
 });
 
+// Zgadywanie jest opt-in: bez guessMin/guessMax warstwa atrybutowa milczy,
+// nawet gdy na stronie jest liczba w rozsadnym zakresie.
+t("warstwy: bez zgody na zgadywanie warstwa atrybutowa nie dziala", () => {
+  const html = `<span class="price">5 299,00 zł</span>`;
+  eq(extractPrice(html, { min: 2560, max: 11376, guessMin: Infinity, guessMax: -Infinity }).price, null);
+  eq(extractPrice(html, { min: 2560, max: 11376, guessMin: 3128, guessMax: 8532 }).price, 5299);
+});
+
 // --- dopasowanie strony do produktu ----------------------------------------
 
 const P_ATSR = { id: "x", ean: "4260405364725", matchTokens: ["ks8100ieatsr"], rejectTokens: ["ks8100ieg"] };

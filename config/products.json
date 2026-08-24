@@ -47,7 +47,7 @@
       "sources": [
         { "shop": "morele", "kind": "shop", "url": "https://www.morele.net/agregat-k-nner-s-hnen-ks8100ieg-8000-w-1-fazowy-8961241/" },
         { "shop": "konner-sohnen", "kind": "shop", "url": "https://konner-sohnen.pl/en/products/dual-fuel-generators-ks-8100ieg", "shipping": 0 },
-        { "shop": "tooles", "kind": "shop", "url": "https://tooles.pl/pl/products/agregat-generator-pradu-inwertorowy-gaz-ks-8100ieg-konner-sohnen-ks-2550" }
+        { "shop": "tooles", "kind": "shop", "url": "https://tooles.pl/pl/products/agregat-generator-pradu-inwertorowy-gaz-ks-8100ieg-konner-sohnen-ks-2550", "allowGuess": true, "guessNote": "Brak danych strukturalnych; warstwa atrybutowa oddala 6 499 zl, co zgadza sie z cena tego modelu u innych sprzedawcow. Sprawdzone 24.08.2026." }
       ]
     },
 
@@ -83,7 +83,7 @@
       "sources": [
         { "shop": "studionarzedzi", "kind": "shop", "url": "https://studionarzedzi.pl/inwerterowe/4719-fogo-f-8001-isg.html" },
         { "shop": "norwit", "kind": "shop", "url": "https://www.norwit.pl/p/agregat-pradotworczy-inwerterowy-fogo-f-8001-isg" },
-        { "shop": "lewor", "kind": "shop", "url": "https://lewor.pl/fogo-f8001-isg" },
+        { "shop": "lewor", "kind": "shop", "url": "https://lewor.pl/fogo-f8001-isg", "bestEffort": true, "guessNote": "Bez danych strukturalnych, a warstwa atrybutowa zwracala tu kolejno 18 559,66 i 12 667,16 zl przy realnej cenie ok. 9 000. Zgadywanie WYLACZONE - zrodlo raportuje noprice i nie psuje statusu. Do wlaczenia dopiero z jawnym textPattern." },
         { "shop": "mmasz", "kind": "shop", "url": "https://mmasz.pl/agregat-pradotworczy-inwerterowy-fogo-f8001isg-75kw-p-3348.html" }
       ]
     },

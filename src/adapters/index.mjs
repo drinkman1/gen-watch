@@ -56,10 +56,16 @@ export async function scrapeShop(product, source) {
 
   const expect = [product.ean, ...(product.matchTokens || [])].filter(Boolean);
   const { min, max } = priceBounds(product.baseline);
-  const g = guessBounds(product.baseline);
+  // Warstwa atrybutowa jest OPT-IN per sklep. Domyslnie wylaczona, bo zgaduje.
+  // Historia tej decyzji: u Lewora zwrocila kolejno 18 559,66 zl i 12 667,16 zl
+  // przy realnej cenie ok. 9 000 - zaciskanie widelek bylo gra w kotka i myszke.
+  // Wlaczamy ja tylko tam, gdzie zobaczylismy, ze oddaje sensowna wartosc.
+  const g = source.allowGuess ? guessBounds(product.baseline) : { min: null, max: null };
   const got = extractPrice(res.html, {
     expectTokens: expect, textPattern: source.textPattern,
-    min, max, guessMin: g.min, guessMax: g.max,
+    min, max,
+    guessMin: source.allowGuess ? g.min : Infinity,
+    guessMax: source.allowGuess ? g.max : -Infinity,
   });
 
   if (got.price == null) {
