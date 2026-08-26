@@ -561,12 +561,36 @@ t("olx: stan z params", () => {
   eq(pickCondition({ params: [] }), "unknown");
 });
 
-const P_OLX = { id: "p", matchTokens: ["ks8100ieg"], rejectTokens: ["ks8100ieatsr"] };
+const P_OLX = { id: "p", matchTokens: ["ks8100ieg"], rejectTokens: ["ks8100ieatsr"],
+  coreTokens: ["8100"], brandTokens: ["konner", "sohnen", "ks"] };
 
-t("olx: dopasowanie po tytule i opisie", () => {
-  truthy(matchesProduct({ title: "Agregat Konner Sohnen KS 8100iEG" }, P_OLX));
-  truthy(matchesProduct({ title: "Agregat", description: "model KS 8100iE G, dual fuel" }, P_OLX));
+t("olx: pelen token to dopasowanie dokladne", () => {
+  eq(matchesProduct({ title: "Agregat Konner Sohnen KS 8100iEG" }, P_OLX), "dokladne");
+  eq(matchesProduct({ title: "Agregat", description: "model KS 8100iE G, dual fuel" }, P_OLX), "dokladne");
+});
+
+// Prawdziwy wynik z 26.08.2026: 40 z 40 ogloszen odrzuconych, bo wymagalem
+// pelnego tokenu. Na OLX-ie sprzedajacy pisza "Konner Sohnen 8100" bez sufiksu.
+t("olx: marka plus numer rodziny to dopasowanie czesciowe", () => {
+  eq(matchesProduct({ title: "Agregat pradotworczy Konner Sohnen 8100" }, P_OLX), "czesciowe");
+  eq(matchesProduct({ title: "Agregat KS 8100" }, P_OLX), "czesciowe");
+});
+
+t("olx: sam numer bez marki nie wystarcza", () => {
+  eq(matchesProduct({ title: "Sprezarka 8100 litrow" }, P_OLX), false);
+});
+
+t("olx: obca rzecz odpada", () => {
   eq(matchesProduct({ title: "Kosiarka spalinowa" }, P_OLX), false);
+  eq(matchesProduct({ title: "Agregat Honda EU 22i" }, P_OLX), false);
+});
+
+t("config: kazdy model ma tokeny marki i rodziny", () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(process.cwd(), "config", "products.json"), "utf8"));
+  for (const p of cfg.products) {
+    truthy((p.coreTokens || []).length, `${p.id}: brak coreTokens`);
+    truthy((p.brandTokens || []).length, `${p.id}: brak brandTokens`);
+  }
 });
 
 t("config: kazdy model ma zapytanie do OLX", () => {

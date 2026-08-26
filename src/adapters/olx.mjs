@@ -82,13 +82,37 @@ export function pickCondition(offer) {
   return "unknown";
 }
 
-// Dopasowanie do modelu. Fogo nie ma EAN, K&S ma - ale w ogloszeniach z drugiej
-// reki EAN i tak nie pada, wiec obie marki idą po znormalizowanej nazwie.
+// Dopasowanie do modelu, DWUSTOPNIOWE.
+//
+// Pierwsza wersja wymagala pelnego tokenu ("ks8100ieatsr") i 26.08.2026 odrzucila
+// komplet - 40 z 40 ogloszen przy kazdym modelu. Powod byl prozaiczny: na OLX-ie
+// nikt tak nie pisze. Tam jest "Agregat Konner Sohnen 8100" albo "KS 8100iE".
+// Sprzedajacy z drugiej reki nie zna sie na sufiksach i nie ma powodu ich podawac.
+//
+//   "dokladne"  - pelen token modelu jest w tresci. Takie oferty moga alarmowac.
+//   "czesciowe" - jest marka i numer rodziny (8100, 9500, 12000), ale bez sufiksu.
+//                 Trafia do raportu jako kandydat do obejrzenia, NIGDY nie alarmuje.
+//
+// Rozroznienie jest istotne wlasnie przez sufiksy: "i" to inwerter, "G" to dual
+// fuel, "ATSR" to gniazdo automatyki. KS 8100iE ATSR i KS 8100iEG to dwa rozne
+// urzadzenia i bot nie ma prawa zgadywac, ktore sprzedajacy ma w garazu.
 export function matchesProduct(offer, product) {
-  const hay = normToken(String(offer.title || "") + " " + String(offer.description || "").slice(0, 400));
-  const hit = (product.matchTokens || []).some((t) => hay.includes(normToken(t)));
-  if (!hit) return false;
-  return !(product.rejectTokens || []).some((r) => hay.includes(normToken(r)) && !hay.includes(normToken(product.matchTokens[0])));
+  const hay = normToken(String(offer.title || "") + " " + String(offer.description || "").slice(0, 600));
+
+  const exact = (product.matchTokens || []).some((t) => hay.includes(normToken(t)));
+  if (exact) {
+    const collides = (product.rejectTokens || []).some(
+      (r) => hay.includes(normToken(r)) && !hay.includes(normToken(product.matchTokens[0]))
+    );
+    return collides ? false : "dokladne";
+  }
+
+  const core = product.coreTokens || [];
+  const brand = product.brandTokens || [];
+  if (!core.length || !brand.length) return false;
+  const hasCore = core.some((c) => hay.includes(normToken(c)));
+  const hasBrand = brand.some((b) => hay.includes(normToken(b)));
+  return hasCore && hasBrand ? "czesciowe" : false;
 }
 
 export async function scrapeOlx(product, source, meta) {
@@ -131,8 +155,14 @@ export async function scrapeOlx(product, source, meta) {
   const out = [];
   const skipped = { model: 0, uszkodzone: 0, daleko: 0, bezCeny: 0, bezWspolrzednych: 0 };
 
+  const sampleTitles = [];
   for (const o of list) {
-    if (!matchesProduct(o, product)) { skipped.model++; continue; }
+    const match = matchesProduct(o, product);
+    if (!match) {
+      skipped.model++;
+      if (sampleTitles.length < 5) sampleTitles.push(String(o.title || "").slice(0, 70));
+      continue;
+    }
     if (REJECT.test(String(o.title || "") + " " + String(o.description || "").slice(0, 400))) { skipped.uszkodzone++; continue; }
 
     const price = pickPrice(o);
@@ -152,7 +182,8 @@ export async function scrapeOlx(product, source, meta) {
       title: String(o.title || "").slice(0, 160),
       location: pickCity(o),
       distanceKm: km,
-      note: null,
+      match,
+      note: match === "czesciowe" ? "dopasowanie czesciowe - sprawdz wariant modelu" : null,
     });
   }
 
@@ -160,6 +191,12 @@ export async function scrapeOlx(product, source, meta) {
   const dropped = Object.entries(skipped).filter(([, n]) => n > 0).map(([k, n]) => `${k}: ${n}`);
   if (dropped.length) issues.push(`odrzucone — ${dropped.join(", ")}`);
   if (!out.length && !list.length) issues.push("OLX nie zwrocil zadnych ogloszen dla tego zapytania");
+  // Gdy nic nie przeszlo filtra, pokazujemy probke tytulow. Bez tego "model: 40"
+  // znaczy tylko "nie pasowalo" i nie wiadomo, czy filtr jest za ostry, czy OLX
+  // po prostu oddal 40 innych agregatow.
+  if (!out.length && sampleTitles.length) {
+    issues.push("przyklady odrzuconych tytulow: " + sampleTitles.map((t) => `"${t}"`).join(", "));
+  }
 
   // Odstep miedzy zapytaniami. Piec modeli x 1,5 s to osiem sekund na przebieg.
   await sleep(1500);

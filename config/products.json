@@ -73,6 +73,16 @@
           "query": "agregat KS 8100iE ATSR",
           "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
         }
+      ],
+      "coreTokens": [
+        "8100"
+      ],
+      "brandTokens": [
+        "konner",
+        "sohnen",
+        "sōhnen",
+        "k&s",
+        "ks"
       ]
     },
     {
@@ -133,6 +143,16 @@
           "query": "agregat KS 8100iEG",
           "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
         }
+      ],
+      "coreTokens": [
+        "8100"
+      ],
+      "brandTokens": [
+        "konner",
+        "sohnen",
+        "sōhnen",
+        "k&s",
+        "ks"
       ]
     },
     {
@@ -167,6 +187,16 @@
           "query": "agregat KS 9500iE",
           "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
         }
+      ],
+      "coreTokens": [
+        "9500"
+      ],
+      "brandTokens": [
+        "konner",
+        "sohnen",
+        "sōhnen",
+        "k&s",
+        "ks"
       ]
     },
     {
@@ -219,6 +249,12 @@
           "query": "Fogo F 8001 iSG agregat",
           "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
         }
+      ],
+      "coreTokens": [
+        "8001"
+      ],
+      "brandTokens": [
+        "fogo"
       ]
     },
     {
@@ -274,6 +310,12 @@
           "query": "Fogo F 12000 iSG agregat",
           "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
         }
+      ],
+      "coreTokens": [
+        "12000"
+      ],
+      "brandTokens": [
+        "fogo"
       ]
     }
   ]
