@@ -79,6 +79,7 @@ try {
 // Import PO ustawieniu GEN_WATCH_DATA_DIR - store.mjs czyta ta zmienna przy
 // wczytaniu modulu, wiec statyczny import wskazalby zly katalog.
 const { scrapeSource } = await import("./adapters/index.mjs");
+const { scrapeOlx } = await import("./adapters/olx.mjs");
 const { closeBrowser } = await import("./fetch.mjs");
 const { mergeMarket, marketAlerts } = await import("./ingest.mjs");
 const { readJson, writeJson, ensureDirs, DATA_DIR } = await import("./store.mjs");
@@ -93,9 +94,22 @@ for (const product of cfg.products) {
   for (const source of product.localSources || []) {
     let r;
     try {
-      r = await scrapeSource(product, source);
+      r = source.kind === "olx"
+        ? await scrapeOlx(product, source, cfg.meta)
+        : await scrapeSource(product, source);
     } catch (e) {
       r = { status: "error", offers: [], issues: ["wyjatek: " + String(e && e.message || e)] };
+    }
+
+    if (r.status === "ok" && source.kind === "olx") {
+      // OLX oddaje juz gotowe wpisy rynkowe: cena, stan, lokalizacja, dystans.
+      // Zero ofert to tu POPRAWNY wynik - nikt akurat nie sprzedaje.
+      if (r.offers.length) ok++; else bad++;
+      for (const o of r.offers) offers.push({ ...o, seenAt: started });
+      const lines = r.offers.map((o) => `${o.price} zl / ${o.condition} / ${o.location || "?"} ~${o.distanceKm} km`);
+      report.push(`  ${r.offers.length ? "OK  " : "--  "} ${product.id} / olx: ${r.offers.length} ofert${lines.length ? "\n         " + lines.join("\n         ") : ""}`);
+      if (r.issues.length) report.push("         " + r.issues.join(" · "));
+      continue;
     }
 
     if (r.status === "ok" && r.offers.length) {

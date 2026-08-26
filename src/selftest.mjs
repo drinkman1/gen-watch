@@ -11,6 +11,7 @@ import {
 import { parseAggregatorRows } from "./adapters/index.mjs";
 import { evaluate, median, allTimeLow, windowPrices, effectiveCost, DAY } from "./alerts.mjs";
 import { extractBlock, validate, marketAlerts } from "./ingest.mjs";
+import { haversineKm, pickPrice, pickCoords, pickCity, pickCondition, matchesProduct } from "./adapters/olx.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -513,6 +514,67 @@ t("ingest: ta sama oferta nie alarmuje dwa razy w oknie ciszy", () => {
   eq(marketAlerts(offers, prods, state, NOW, 24).length, 1);
   eq(marketAlerts(offers, prods, state, NOW + 3600000, 24).length, 0);
   eq(marketAlerts(offers, prods, state, NOW + 30 * 3600000, 24).length, 1);
+});
+
+// --- OLX --------------------------------------------------------------------
+
+// Filtrowanie po odleglosci robimy u siebie, z wspolrzednych oferty - nie
+// zgadujemy nazw parametrow lokalizacyjnych OLX-a, bo zla nazwa dalaby ciche,
+// niepelne wyniki zamiast bledu.
+const GRODZISK = { lat: 52.1094, lon: 20.6242 };
+
+t("olx: dystans liczony z wspolrzednych", () => {
+  eq(haversineKm(GRODZISK, GRODZISK), 0);
+  const zyrardow = { lat: 52.0489, lon: 20.4447 };
+  const km = haversineKm(GRODZISK, zyrardow);
+  truthy(km >= 10 && km <= 20, "Zyrardow ma byc 10-20 km od Grodziska, jest " + km);
+  const gdansk = { lat: 54.352, lon: 18.6466 };
+  truthy(haversineKm(GRODZISK, gdansk) > 250, "Gdansk musi wypasc poza promien");
+});
+
+t("olx: cena z params", () => {
+  eq(pickPrice({ params: [{ key: "price", value: { value: 4200, label: "4 200 zł" } }] }), 4200);
+  eq(pickPrice({ params: [{ key: "price", value: { label: "4 200 zł" } }] }), 4200);
+  eq(pickPrice({ params: [{ key: "state", value: { key: "used" } }] }), null);
+  eq(pickPrice({}), null);
+});
+
+// "Cena do negocjacji" bez kwoty to brak ceny, nie zero.
+t("olx: brak kwoty nie daje zera", () => {
+  eq(pickPrice({ params: [{ key: "price", value: { label: "Zamienię" } }] }), null);
+});
+
+t("olx: wspolrzedne z map albo location", () => {
+  eq(pickCoords({ map: { lat: 52.1, lon: 20.6 } }), { lat: 52.1, lon: 20.6 });
+  eq(pickCoords({ location: { lat: 52.1, lon: 20.6 } }), { lat: 52.1, lon: 20.6 });
+  eq(pickCoords({ location: { city: { name: "Żyrardów" } } }), null);
+});
+
+t("olx: miasto i wojewodztwo", () => {
+  eq(pickCity({ location: { city: { name: "Żyrardów" }, region: { name: "Mazowieckie" } } }), "Żyrardów, Mazowieckie");
+  eq(pickCity({}), null);
+});
+
+t("olx: stan z params", () => {
+  eq(pickCondition({ params: [{ key: "state", value: { key: "used" } }] }), "used");
+  eq(pickCondition({ params: [{ key: "state", value: { key: "new" } }] }), "new");
+  eq(pickCondition({ params: [] }), "unknown");
+});
+
+const P_OLX = { id: "p", matchTokens: ["ks8100ieg"], rejectTokens: ["ks8100ieatsr"] };
+
+t("olx: dopasowanie po tytule i opisie", () => {
+  truthy(matchesProduct({ title: "Agregat Konner Sohnen KS 8100iEG" }, P_OLX));
+  truthy(matchesProduct({ title: "Agregat", description: "model KS 8100iE G, dual fuel" }, P_OLX));
+  eq(matchesProduct({ title: "Kosiarka spalinowa" }, P_OLX), false);
+});
+
+t("config: kazdy model ma zapytanie do OLX", () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(process.cwd(), "config", "products.json"), "utf8"));
+  for (const p of cfg.products) {
+    const olx = (p.localSources || []).find((s) => s.kind === "olx");
+    truthy(olx && olx.query, `${p.id}: brak zapytania do OLX`);
+  }
 });
 
 // --- konfiguracja -----------------------------------------------------------
