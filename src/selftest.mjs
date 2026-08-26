@@ -235,8 +235,13 @@ t("warstwy: bez zgody na zgadywanie warstwa atrybutowa nie dziala", () => {
 // class="a-offscreen">. Zadna warstwa strukturalna jej nie widzi, wiec zrodlo
 // dostaje jawny wzorzec z konfiguracji - to nie jest zgadywanie, tylko
 // sprawdzony ksztalt konkretnego sklepu.
-t("amazon: cena z a-offscreen po jawnym wzorcu", () => {
-  const html = `<div id="corePrice"><span class="a-price"><span class="a-offscreen">6 499,00 zł</span>`
+// Prawdziwy blad z 26.08.2026: wzorzec bez zakotwiczenia zlapal 3 899 zl
+// z karuzeli "podobne produkty" i wywolal falszywy alert. Stad karuzela
+// STOI W FIXTURZE PRZED cena wlasciwa - test przechodzi tylko wtedy, gdy
+// wzorzec faktycznie kotwiczy sie w bloku corePrice.
+t("amazon: cena z bloku corePrice, nie z karuzeli", () => {
+  const html = `<div class="p13n-carousel"><span class="a-price"><span class="a-offscreen">3 899,00 zł</span></span></div>`
+    + `<div id="corePriceDisplay_desktop_feature_div"><span class="a-price"><span class="a-offscreen">6 499,00 zł</span>`
     + `<span aria-hidden="true">6 499,00 zł</span></span></div>`;
   const cfg = JSON.parse(fs.readFileSync(path.join(process.cwd(), "config", "products.json"), "utf8"));
   const amazon = cfg.products

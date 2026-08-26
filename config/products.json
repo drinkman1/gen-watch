@@ -118,8 +118,8 @@
           "kind": "shop",
           "url": "https://www.amazon.pl/dp/B09DTLH354",
           "discountPct": 4,
-          "textPattern": "class=\"a-offscreen\">\\s*([0-9][0-9\\s\\u00a0.,]*)\\s*z",
-          "patternNote": "Amazon nie ma JSON-LD ani og:price. Cena siedzi w <span class=\"a-offscreen\">. Sprawdzone 26.08.2026."
+          "textPattern": "corePrice[\\s\\S]{0,3000}?class=\"a-offscreen\">\\s*([0-9][0-9\\s\\u00a0.,]*)\\s*z",
+          "patternNote": "Wzorzec MUSI byc zakotwiczony w bloku corePrice. Pierwsza wersja szukala samego a-offscreen i 26.08.2026 zlapala 3 899 zl z karuzeli 'podobne produkty' przy modelu, ktory wszedzie kosztuje 5 700-6 800 - i wywolala falszywy alert. Amazon wstawia a-offscreen takze w reklamach, zestawach 'kup razem' i polecajkach."
         }
       ]
     },
