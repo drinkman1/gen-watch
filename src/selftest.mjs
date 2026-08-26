@@ -231,6 +231,36 @@ t("warstwy: bez zgody na zgadywanie warstwa atrybutowa nie dziala", () => {
   eq(extractPrice(html, { min: 2560, max: 11376, guessMin: 3128, guessMax: 8532 }).price, 5299);
 });
 
+// Amazon: pelna strona, wlasciwy tytul, a cena wylacznie w <span
+// class="a-offscreen">. Zadna warstwa strukturalna jej nie widzi, wiec zrodlo
+// dostaje jawny wzorzec z konfiguracji - to nie jest zgadywanie, tylko
+// sprawdzony ksztalt konkretnego sklepu.
+t("amazon: cena z a-offscreen po jawnym wzorcu", () => {
+  const html = `<div id="corePrice"><span class="a-price"><span class="a-offscreen">6 499,00 zł</span>`
+    + `<span aria-hidden="true">6 499,00 zł</span></span></div>`;
+  const cfg = JSON.parse(fs.readFileSync(path.join(process.cwd(), "config", "products.json"), "utf8"));
+  const amazon = cfg.products
+    .flatMap((p) => p.localSources || [])
+    .find((s) => s.shop === "amazon");
+  truthy(amazon && amazon.textPattern, "amazon musi miec textPattern w konfiguracji");
+  eq(!!amazon.allowGuess, false, "amazon ma isc po jawnym wzorcu, nie po zgadywaniu");
+  // Tak jak w skanie lokalnym: zgadywanie wylaczone, zostaje warstwa tekstowa.
+  const r = extractPrice(html, {
+    textPattern: amazon.textPattern,
+    min: 2560, max: 11376, guessMin: Infinity, guessMax: -Infinity,
+  });
+  eq(r.price, 6499);
+  eq(r.method, "text");
+});
+
+// e-katalog odpadl 26.08.2026 takze z lacza uzytkownika (403). Gdyby ktos
+// kiedys dopisal go z powrotem do skanu lokalnego, ten test o tym przypomni.
+t("skan lokalny: e-katalog nie wraca do localSources bez ponownego testu", () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(process.cwd(), "config", "products.json"), "utf8"));
+  const hit = cfg.products.flatMap((p) => p.localSources || []).filter((s) => s.shop === "e-katalog");
+  eq(hit.length, 0, "e-katalog oddaje 403 takze z domowego adresu");
+});
+
 // --- dopasowanie strony do produktu ----------------------------------------
 
 const P_ATSR = { id: "x", ean: "4260405364725", matchTokens: ["ks8100ieatsr"], rejectTokens: ["ks8100ieg"] };
