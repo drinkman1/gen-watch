@@ -44,6 +44,9 @@ t("cena: liczba", () => eq(parsePrice(8999.5), 8999.5));
 t("cena: tysiace kropka bez groszy", () => eq(parsePrice("11.999"), 11999));
 t("cena: smiec", () => eq(parsePrice("zapytaj o cene"), null));
 t("cena: null", () => eq(parsePrice(null), null));
+t("cena: angielski zapis bez separatora tysiecy", () => eq(parsePrice("1234.50"), 1234.5));
+t("cena: undefined jak null", () => eq(parsePrice(undefined), null));
+t("cena: liczba nieskonczona odpada", () => eq(parsePrice(Infinity), null));
 
 t("token: rozne zapisy tego samego modelu", () => {
   eq(normToken("KS 8100iE ATSR"), "ks8100ieatsr");
