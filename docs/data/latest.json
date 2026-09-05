@@ -1,0 +1,530 @@
+{
+  "generatedAt": "2026-09-05T19:54:38.475Z",
+  "products": [
+    {
+      "id": "ks-8100ie-atsr",
+      "name": "Könner & Söhnen KS 8100iE ATSR",
+      "brand": "Könner & Söhnen",
+      "ean": "4260405364725",
+      "baseline": 4999,
+      "hardThreshold": 4800,
+      "specSource": "https://konner-sohnen.pl/en/products/inverter-generators-ks-8100ie-atsr",
+      "specNote": "8,5 kW max / 8,0 kW zn., 230V, silnik KS 480i 458 cm3, 68 kg. Dane wylacznie od producenta - sklepy notorycznie sie rozjezdzaja.",
+      "best": {
+        "shop": "kupagregat",
+        "price": 4999,
+        "url": "https://kupagregat.pl/p/agregat-inwertorowy-ks-8100ie-atsr-8kw-47",
+        "availability": "dostepny"
+      },
+      "offers": [
+        {
+          "shop": "kupagregat",
+          "price": 4999,
+          "currency": "PLN",
+          "availability": "dostepny",
+          "url": "https://kupagregat.pl/p/agregat-inwertorowy-ks-8100ie-atsr-8kw-47",
+          "method": "jsonld",
+          "shipping": null,
+          "discountPct": 0,
+          "note": "sklep nie podaje kosztu dostawy",
+          "cost": 4999,
+          "shippingKnown": false
+        },
+        {
+          "shop": "morele",
+          "price": 6274.5,
+          "currency": "PLN",
+          "availability": "brak",
+          "url": "https://www.morele.net/agregat-k-nner-s-hnen-ks8100ieatsr-8000-w-1-fazowy-8680008/",
+          "method": "jsonld",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 6274.5,
+          "shippingKnown": false
+        },
+        {
+          "shop": "konner-sohnen",
+          "price": 6289,
+          "currency": "PLN",
+          "availability": "dostepny",
+          "url": "https://konner-sohnen.pl/en/products/inverter-generators-ks-8100ie-atsr",
+          "method": "jsonld",
+          "shipping": 0,
+          "discountPct": 0,
+          "note": null,
+          "cost": 6289,
+          "shippingKnown": true
+        },
+        {
+          "shop": "alnar",
+          "price": 6289,
+          "currency": "PLN",
+          "availability": null,
+          "url": "https://alnar.pl/ks-8100ie-atsr-inwertorowy-agregat-pradotworczy-8-5kw-230v-p-30936.html",
+          "method": "microdata",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 6289,
+          "shippingKnown": false
+        }
+      ],
+      "sources": [
+        {
+          "shop": "morele",
+          "kind": "shop",
+          "url": "https://www.morele.net/agregat-k-nner-s-hnen-ks8100ieatsr-8000-w-1-fazowy-8680008/",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 822,
+          "issues": []
+        },
+        {
+          "shop": "konner-sohnen",
+          "kind": "shop",
+          "url": "https://konner-sohnen.pl/en/products/inverter-generators-ks-8100ie-atsr",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 1580,
+          "issues": []
+        },
+        {
+          "shop": "kupagregat",
+          "kind": "shop",
+          "url": "https://kupagregat.pl/p/agregat-inwertorowy-ks-8100ie-atsr-8kw-47",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 5062,
+          "issues": []
+        },
+        {
+          "shop": "alnar",
+          "kind": "shop",
+          "url": "https://alnar.pl/ks-8100ie-atsr-inwertorowy-agregat-pradotworczy-8-5kw-230v-p-30936.html",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 3623,
+          "issues": []
+        }
+      ],
+      "stats": {
+        "median": 4999,
+        "allTimeLow": 4999,
+        "samples": 65
+      },
+      "alerted": false,
+      "suppressed": false,
+      "historyPoints": 66
+    },
+    {
+      "id": "ks-8100ieg",
+      "name": "Könner & Söhnen KS 8100iEG",
+      "brand": "Könner & Söhnen",
+      "ean": "4260405364817",
+      "baseline": 5688,
+      "hardThreshold": 5400,
+      "specSource": "https://konner-sohnen.pl/en/products/dual-fuel-generators-ks-8100ieg",
+      "specNote": "Dual fuel benzyna/LPG. Dane wylacznie od producenta.",
+      "best": {
+        "shop": "tooles",
+        "price": 6499,
+        "url": "https://tooles.pl/pl/products/agregat-generator-pradu-inwertorowy-gaz-ks-8100ieg-konner-sohnen-ks-2550",
+        "availability": null
+      },
+      "offers": [
+        {
+          "shop": "morele",
+          "price": 5688.26,
+          "currency": "PLN",
+          "availability": "brak",
+          "url": "https://www.morele.net/agregat-k-nner-s-hnen-ks8100ieg-8000-w-1-fazowy-8961241/",
+          "method": "jsonld",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 5688.26,
+          "shippingKnown": false
+        },
+        {
+          "shop": "tooles",
+          "price": 6499,
+          "currency": "PLN",
+          "availability": null,
+          "url": "https://tooles.pl/pl/products/agregat-generator-pradu-inwertorowy-gaz-ks-8100ieg-konner-sohnen-ks-2550",
+          "method": "priceattr",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 6499,
+          "shippingKnown": false
+        },
+        {
+          "shop": "konner-sohnen",
+          "price": 6819,
+          "currency": "PLN",
+          "availability": "dostepny",
+          "url": "https://konner-sohnen.pl/en/products/dual-fuel-generators-ks-8100ieg",
+          "method": "jsonld",
+          "shipping": 0,
+          "discountPct": 0,
+          "note": null,
+          "cost": 6819,
+          "shippingKnown": true
+        }
+      ],
+      "sources": [
+        {
+          "shop": "morele",
+          "kind": "shop",
+          "url": "https://www.morele.net/agregat-k-nner-s-hnen-ks8100ieg-8000-w-1-fazowy-8961241/",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 682,
+          "issues": []
+        },
+        {
+          "shop": "konner-sohnen",
+          "kind": "shop",
+          "url": "https://konner-sohnen.pl/en/products/dual-fuel-generators-ks-8100ieg",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 1482,
+          "issues": []
+        },
+        {
+          "shop": "tooles",
+          "kind": "shop",
+          "url": "https://tooles.pl/pl/products/agregat-generator-pradu-inwertorowy-gaz-ks-8100ieg-konner-sohnen-ks-2550",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 1311,
+          "issues": [
+            "cena z atrybutu HTML, nie z danych strukturalnych"
+          ]
+        }
+      ],
+      "stats": {
+        "median": 6499,
+        "allTimeLow": 5688.26,
+        "samples": 65
+      },
+      "alerted": false,
+      "suppressed": false,
+      "historyPoints": 66
+    },
+    {
+      "id": "ks-9500ie-s-atsr",
+      "name": "Könner & Söhnen KS 9500iE S ATSR",
+      "brand": "Könner & Söhnen",
+      "ean": "4260405367184",
+      "baseline": 9859,
+      "hardThreshold": 9300,
+      "specSource": "https://konner-sohnen.pl/en/products/inverter-generator-ks-9500ie-s-atsr",
+      "specNote": "9,5 kW max / 9,0 kW zn., 230V, bak 30 l, 85 kg. Dane wylacznie od producenta.",
+      "best": {
+        "shop": "konner-sohnen",
+        "price": 9859,
+        "url": "https://konner-sohnen.pl/en/products/inverter-generator-ks-9500ie-s-atsr",
+        "availability": "dostepny"
+      },
+      "offers": [
+        {
+          "shop": "konner-sohnen",
+          "price": 9859,
+          "currency": "PLN",
+          "availability": "dostepny",
+          "url": "https://konner-sohnen.pl/en/products/inverter-generator-ks-9500ie-s-atsr",
+          "method": "jsonld",
+          "shipping": 0,
+          "discountPct": 0,
+          "note": null,
+          "cost": 9859,
+          "shippingKnown": true
+        }
+      ],
+      "sources": [
+        {
+          "shop": "konner-sohnen",
+          "kind": "shop",
+          "url": "https://konner-sohnen.pl/en/products/inverter-generator-ks-9500ie-s-atsr",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 653,
+          "issues": []
+        }
+      ],
+      "stats": {
+        "median": 9859,
+        "allTimeLow": 9859,
+        "samples": 65
+      },
+      "alerted": false,
+      "suppressed": false,
+      "historyPoints": 66
+    },
+    {
+      "id": "fogo-f8001isg",
+      "name": "Fogo F 8001 iSG",
+      "brand": "Fogo",
+      "ean": null,
+      "baseline": 8999,
+      "hardThreshold": 8500,
+      "specSource": "https://www.fogo.pl/f-8001-isg",
+      "specNote": "7,5 kW, 230V, inwerter, dual fuel benzyna+LPG.",
+      "best": {
+        "shop": "studionarzedzi",
+        "price": 8599,
+        "url": "https://studionarzedzi.pl/inwerterowe/4719-fogo-f-8001-isg.html",
+        "availability": "dostepny"
+      },
+      "offers": [
+        {
+          "shop": "studionarzedzi",
+          "price": 8599,
+          "currency": "PLN",
+          "availability": "dostepny",
+          "url": "https://studionarzedzi.pl/inwerterowe/4719-fogo-f-8001-isg.html",
+          "method": "jsonld",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 8599,
+          "shippingKnown": false
+        },
+        {
+          "shop": "mmasz",
+          "price": 8969,
+          "currency": "PLN",
+          "availability": null,
+          "url": "https://mmasz.pl/agregat-pradotworczy-inwerterowy-fogo-f8001isg-75kw-p-3348.html",
+          "method": "microdata",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 8969,
+          "shippingKnown": false
+        },
+        {
+          "shop": "norwit",
+          "price": 10209,
+          "currency": "PLN",
+          "availability": "na zamowienie",
+          "url": "https://www.norwit.pl/p/agregat-pradotworczy-inwertorowy-fogo-f-8001-isg",
+          "method": "jsonld",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 10209,
+          "shippingKnown": false
+        }
+      ],
+      "sources": [
+        {
+          "shop": "studionarzedzi",
+          "kind": "shop",
+          "url": "https://studionarzedzi.pl/inwerterowe/4719-fogo-f-8001-isg.html",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 2453,
+          "issues": []
+        },
+        {
+          "shop": "norwit",
+          "kind": "shop",
+          "url": "https://www.norwit.pl/p/agregat-pradotworczy-inwerterowy-fogo-f-8001-isg",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 1115,
+          "issues": []
+        },
+        {
+          "shop": "lewor",
+          "kind": "shop",
+          "url": "https://lewor.pl/fogo-f8001-isg",
+          "status": "noprice",
+          "bestEffort": true,
+          "found": 0,
+          "ms": 1148,
+          "issues": [
+            "zadna warstwa nie znalazla ceny",
+            "tytul: \"Agregat prądotwórczy, inwerterowy FOGO F8001ISG 7.5kW 230V dwupaliwowy (benzyna-\"",
+            "188 kB, via fetch",
+            "tekst: \"Agregat prądotwórczy, inwerterowy FOGO F8001ISG 7.5kW 230V dwupaliwowy (benzyna-gaz) | Lewor Strona korzysta z plików co\""
+          ]
+        },
+        {
+          "shop": "mmasz",
+          "kind": "shop",
+          "url": "https://mmasz.pl/agregat-pradotworczy-inwerterowy-fogo-f8001isg-75kw-p-3348.html",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 1148,
+          "issues": []
+        }
+      ],
+      "stats": {
+        "median": 8599,
+        "allTimeLow": 8599,
+        "samples": 65
+      },
+      "alerted": false,
+      "suppressed": false,
+      "historyPoints": 66
+    },
+    {
+      "id": "fogo-f12000isg",
+      "name": "Fogo F 12000 iSG",
+      "brand": "Fogo",
+      "ean": null,
+      "baseline": 11998,
+      "hardThreshold": 11300,
+      "specSource": "https://www.fogo.pl/f-12000-isg",
+      "specNote": "11,8 kVA max / 11,1 kVA zn. 3-faz, 9,5 kW / 9,0 kW 1-faz, 400/230V, przelaczalny, dual fuel.",
+      "best": {
+        "shop": "studionarzedzi",
+        "price": 11899,
+        "url": "https://studionarzedzi.pl/inwerterowe/4546-fogo-f-12000-isg.html",
+        "availability": "dostepny"
+      },
+      "offers": [
+        {
+          "shop": "studionarzedzi",
+          "price": 11899,
+          "currency": "PLN",
+          "availability": "dostepny",
+          "url": "https://studionarzedzi.pl/inwerterowe/4546-fogo-f-12000-isg.html",
+          "method": "jsonld",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 11899,
+          "shippingKnown": false
+        },
+        {
+          "shop": "nowaktech",
+          "price": 12232.05,
+          "currency": "PLN",
+          "availability": null,
+          "url": "https://sklep.nowaktech.pl/strona-glowna/2280-agregat-pradotworczy-fogo-f-12000-isg-inwerter-benzyna-lpg",
+          "method": "microdata",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 12232.05,
+          "shippingKnown": false
+        },
+        {
+          "shop": "szopmajster",
+          "price": 12400,
+          "currency": "PLN",
+          "availability": "dostepny",
+          "url": "https://szopmajster.pl/sklep/fogo-f-12000-isg-inwerterowy-agregat-pradotworczy-dual-fuel-230-400-v/",
+          "method": "jsonld",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 12400,
+          "shippingKnown": false
+        },
+        {
+          "shop": "sarpol",
+          "price": 15309.2,
+          "currency": "PLN",
+          "availability": "na zamowienie",
+          "url": "https://sarpol.pl/agregaty-inwertorowe/1423-agregat-pradotworczy-inwerterowy-fogo-f-12000-isg.html",
+          "method": "jsonld",
+          "shipping": null,
+          "discountPct": 0,
+          "note": null,
+          "cost": 15309.2,
+          "shippingKnown": false
+        }
+      ],
+      "sources": [
+        {
+          "shop": "studionarzedzi",
+          "kind": "shop",
+          "url": "https://studionarzedzi.pl/inwerterowe/4546-fogo-f-12000-isg.html",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 2082,
+          "issues": []
+        },
+        {
+          "shop": "profimarket",
+          "kind": "shop",
+          "url": "https://profimarket.pl/f-12000-isg-agregat-pradotworczy-lpgbenzyna-inwerterowy-fogo-p-4545.html",
+          "status": "error",
+          "bestEffort": false,
+          "found": 0,
+          "ms": 62562,
+          "issues": [
+            "HTTP - (page.goto: Timeout 40000ms exceeded.\nCall log:\n  - navigating to \"https://profimarket.pl/f-12000-isg-agregat-pradotworczy-lpgbenzyna-inwerterowy-fogo-p-4545.html\", waiting until \"domcontentloaded\"\n)"
+          ]
+        },
+        {
+          "shop": "sarpol",
+          "kind": "shop",
+          "url": "https://sarpol.pl/agregaty-inwertorowe/1423-agregat-pradotworczy-inwerterowy-fogo-f-12000-isg.html",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 2276,
+          "issues": []
+        },
+        {
+          "shop": "szopmajster",
+          "kind": "shop",
+          "url": "https://szopmajster.pl/sklep/fogo-f-12000-isg-inwerterowy-agregat-pradotworczy-dual-fuel-230-400-v/",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 4692,
+          "issues": []
+        },
+        {
+          "shop": "nowaktech",
+          "kind": "shop",
+          "url": "https://sklep.nowaktech.pl/strona-glowna/2280-agregat-pradotworczy-fogo-f-12000-isg-inwerter-benzyna-lpg",
+          "status": "ok",
+          "bestEffort": false,
+          "found": 1,
+          "ms": 673,
+          "issues": []
+        }
+      ],
+      "stats": {
+        "median": 11800,
+        "allTimeLow": 11800,
+        "samples": 65
+      },
+      "alerted": false,
+      "suppressed": false,
+      "historyPoints": 66
+    }
+  ],
+  "alerts": [],
+  "run": {
+    "status": "degraded",
+    "startedAt": "2026-09-05T19:54:38.475Z",
+    "products": 5,
+    "sourcesOk": 15,
+    "sourcesBad": 2,
+    "alerts": 0,
+    "productsWithoutPrice": [],
+    "runUrl": "https://github.com/drinkman1/gen-watch/actions/runs/33988492606"
+  }
+}
