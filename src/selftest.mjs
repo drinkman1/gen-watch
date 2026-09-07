@@ -9,8 +9,12 @@ import {
   extractPrice, pageMatchesProduct, fromPriceAttrs, priceBounds, guessBounds,
 } from "./extract.mjs";
 import { parseAggregatorRows } from "./adapters/index.mjs";
-import { evaluate, median, allTimeLow, windowPrices, effectiveCost, DAY } from "./alerts.mjs";
+import { evaluate, median, allTimeLow, windowPrices, effectiveCost, fmt, DAY } from "./alerts.mjs";
 import { extractBlock, validate, marketAlerts } from "./ingest.mjs";
+import {
+  escapeHtml, formatAlerts, formatDegraded, degradedKey,
+  shouldSendDegraded, buildSendRequest, sendTelegram, planMessages,
+} from "./telegram.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -18,6 +22,16 @@ const failures = [];
 function t(name, fn) {
   try {
     fn();
+    pass++;
+  } catch (e) {
+    fail++;
+    failures.push(`${name}: ${e && e.message || e}`);
+  }
+}
+
+async function ta(name, fn) {
+  try {
+    await fn();
     pass++;
   } catch (e) {
     fail++;
@@ -515,6 +529,156 @@ t("ingest: ta sama oferta nie alarmuje dwa razy w oknie ciszy", () => {
   eq(marketAlerts(offers, prods, state, NOW + 30 * 3600000, 24).length, 1);
 });
 
+// --- powiadomienia Telegram ----------------------------------------------
+
+t("telegram: escapeHtml nie rusza zwyklego tekstu", () => {
+  eq(escapeHtml("Fogo F 8001 iSG za 8 499 zl"), "Fogo F 8001 iSG za 8 499 zl");
+});
+
+t("telegram: escapeHtml zamienia < > &", () => {
+  eq(escapeHtml("a & b <x>"), "a &amp; b &lt;x&gt;");
+});
+
+const A_HARD = {
+  name: "Fogo F 8001 iSG",
+  price: 8499,
+  shop: "studionarzedzi",
+  url: "https://studionarzedzi.pl/x?a=1&b=2",
+  reasons: [
+    { code: "hard", text: "ponizej progu 8 500 zl (jest 8 499 zl)" },
+    { code: "low", text: "nowe minimum - poprzednie 8 599 zl" },
+  ],
+  effective: { cost: 8499, shippingKnown: false },
+  baseline: 8999,
+};
+
+t("telegram: formatAlerts pusta lista to null", () => {
+  eq(formatAlerts([]), null);
+});
+
+t("telegram: formatAlerts ma nazwe, cene, sklep i powod", () => {
+  const s = formatAlerts([A_HARD]);
+  truthy(s.includes("Fogo F 8001 iSG"), "brak nazwy w: " + s);
+  truthy(s.includes(fmt(8499)), "brak ceny w: " + s);
+  truthy(s.includes("studionarzedzi"), "brak sklepu w: " + s);
+  truthy(s.includes("nowe minimum"), "brak powodu w: " + s);
+});
+
+t("telegram: formatAlerts liczy pozycje w naglowku", () => {
+  truthy(formatAlerts([A_HARD, A_HARD]).includes("2"), "naglowek bez liczby alertow");
+});
+
+t("telegram: formatAlerts bez reasons pokazuje prog", () => {
+  const s = formatAlerts([{ name: "KS 8100iEG", price: 5300, shop: "olx", url: null, threshold: 5400 }]);
+  truthy(s.includes(fmt(5400)), "prog nie trafil do tekstu: " + s);
+});
+
+t("telegram: formatAlerts escapuje nazwe sklepu", () => {
+  const s = formatAlerts([{ name: "X", price: 100, shop: "A & B", url: null, threshold: 90 }]);
+  truthy(s.includes("A &amp; B"), "sklep nie zescapowany: " + s);
+});
+
+const BROKEN = [
+  { name: "KS 9500iE S ATSR", shop: "konner-sohnen", status: "error" },
+  { name: "Fogo F 8001 iSG", shop: "lewor", status: "noprice" },
+];
+
+t("telegram: degradedKey nie zalezy od kolejnosci", () => {
+  eq(degradedKey(BROKEN), degradedKey([...BROKEN].reverse()));
+});
+
+t("telegram: degradedKey rozni sie przy innym zestawie", () => {
+  truthy(degradedKey(BROKEN) !== degradedKey([BROKEN[0]]), "ten sam klucz mimo innej listy");
+});
+
+t("telegram: formatDegraded przy status ok to null", () => {
+  eq(formatDegraded({ status: "ok", sourcesOk: 17, sourcesBad: 0 }, []), null);
+});
+
+t("telegram: formatDegraded wylicza zepsute zrodla", () => {
+  const s = formatDegraded({ status: "degraded", sourcesOk: 15, sourcesBad: 2 }, BROKEN);
+  truthy(s.includes("konner-sohnen"), "brak pierwszego zrodla: " + s);
+  truthy(s.includes("lewor"), "brak drugiego zrodla: " + s);
+  truthy(s.includes("15"), "brak licznika zrodel: " + s);
+});
+
+t("telegram: shouldSendDegraded tlumi powtorke w oknie ciszy", () => {
+  const state = {};
+  eq(shouldSendDegraded(state, BROKEN, NOW, 24), true);
+  eq(shouldSendDegraded(state, BROKEN, NOW + 3600 * 1000, 24), false);
+  eq(shouldSendDegraded(state, BROKEN, NOW + 30 * 3600 * 1000, 24), true);
+});
+
+t("telegram: shouldSendDegraded przepuszcza od razu przy zmianie zestawu", () => {
+  const state = {};
+  eq(shouldSendDegraded(state, BROKEN, NOW, 24), true);
+  eq(shouldSendDegraded(state, [BROKEN[0]], NOW + 1000, 24), true);
+});
+
+t("telegram: buildSendRequest sklada url z tokenem i body HTML", () => {
+  const r = buildSendRequest("czesc", { token: "T123", chatId: "999" });
+  eq(r.url, "https://api.telegram.org/botT123/sendMessage");
+  eq(r.method, "POST");
+  const b = JSON.parse(r.body);
+  eq(b.chat_id, "999");
+  eq(b.text, "czesc");
+  eq(b.parse_mode, "HTML");
+  eq(b.disable_web_page_preview, true);
+});
+
+t("telegram: buildSendRequest bez tokenu albo chatId rzuca", () => {
+  let a = false, b = false;
+  try { buildSendRequest("x", { chatId: "9" }); } catch { a = true; }
+  try { buildSendRequest("x", { token: "T" }); } catch { b = true; }
+  truthy(a && b, "brak wyjatku przy niekompletnej konfiguracji");
+});
+
+const SNAP_OK = {
+  products: [
+    { name: "KS 8100iE ATSR", sources: [{ shop: "morele", status: "ok", bestEffort: false }], best: { price: 4999 } },
+    { name: "Fogo F 8001 iSG", sources: [{ shop: "lewor", status: "noprice", bestEffort: true }], best: { price: 8599 } },
+  ],
+  alerts: [],
+  run: { status: "ok", sourcesOk: 2, sourcesBad: 0 },
+};
+
+t("telegram: planMessages nic nie zwraca przy czystym skanie bez alertow", () => {
+  eq(planMessages(SNAP_OK, {}, NOW, 24), []);
+});
+
+t("telegram: planMessages przepuszcza alert cenowy", () => {
+  const snap = { ...SNAP_OK, alerts: [{ name: "Fogo F 8001 iSG", price: 8499, shop: "studionarzedzi", url: null, threshold: 8500 }] };
+  const msgs = planMessages(snap, {}, NOW, 24);
+  eq(msgs.length, 1);
+  truthy(msgs[0].includes("Fogo F 8001 iSG"), msgs[0]);
+});
+
+t("telegram: planMessages pomija zrodla best-effort przy degraded", () => {
+  const snap = {
+    products: [
+      { name: "KS 9500iE S ATSR", sources: [{ shop: "konner-sohnen", status: "error", bestEffort: false }], best: null },
+      { name: "Fogo F 8001 iSG", sources: [{ shop: "lewor", status: "noprice", bestEffort: true }], best: { price: 8599 } },
+    ],
+    alerts: [],
+    run: { status: "degraded", sourcesOk: 1, sourcesBad: 1 },
+  };
+  const msgs = planMessages(snap, {}, NOW, 24);
+  eq(msgs.length, 1);
+  truthy(msgs[0].includes("konner-sohnen"), msgs[0]);
+  truthy(!msgs[0].includes("lewor"), "best-effort nie moze trafic do wiadomosci: " + msgs[0]);
+});
+
+t("telegram: planMessages tlumi powtorke sygnalu degraded", () => {
+  const snap = {
+    products: [{ name: "KS 9500iE S ATSR", sources: [{ shop: "konner-sohnen", status: "error", bestEffort: false }], best: null }],
+    alerts: [],
+    run: { status: "degraded", sourcesOk: 0, sourcesBad: 1 },
+  };
+  const state = {};
+  eq(planMessages(snap, state, NOW, 24).length, 1);
+  eq(planMessages(snap, state, NOW + 3600 * 1000, 24).length, 0);
+});
+
 // --- konfiguracja -----------------------------------------------------------
 
 t("config: parsuje sie i ma komplet pol", () => {
@@ -543,6 +707,28 @@ t("config: reguly alertu sa sensowne", () => {
   truthy(r.medianDropPct > 0 && r.medianDropPct < 30, "prog procentowy poza rozsadkiem");
   truthy(r.minSamplesForMedian >= 5, "za mala probka na mediane");
   truthy(r.realertAfterHours >= 6, "za krotkie okno ciszy przy skanie co 3h");
+});
+
+// --- powiadomienia Telegram: wysylka (z wstrzyknietym fetch) --------------
+
+await ta("telegram: sendTelegram zwraca ok:true przy 200", async () => {
+  const fake = async () => ({ ok: true, status: 200 });
+  const r = await sendTelegram("x", { token: "T", chatId: "1", fetchImpl: fake });
+  eq(r.ok, true);
+});
+
+await ta("telegram: sendTelegram zwraca ok:false bez rzutu przy 429", async () => {
+  const fake = async () => ({ ok: false, status: 429, json: async () => ({ description: "Too Many Requests" }) });
+  const r = await sendTelegram("x", { token: "T", chatId: "1", fetchImpl: fake });
+  eq(r.ok, false);
+  eq(r.status, 429);
+});
+
+await ta("telegram: sendTelegram lapie wyjatek sieci", async () => {
+  const fake = async () => { throw new Error("ECONNRESET"); };
+  const r = await sendTelegram("x", { token: "T", chatId: "1", fetchImpl: fake });
+  eq(r.ok, false);
+  truthy(String(r.error).includes("ECONNRESET"), "wyjatek nie trafil do error: " + r.error);
 });
 
 // --- podsumowanie -----------------------------------------------------------

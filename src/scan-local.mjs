@@ -158,6 +158,26 @@ if (alerts.length) {
   console.log("\nZadna oferta nie schodzi ponizej progu.");
 }
 
+// Telegram - ten sam modul co tor A. Tor B nie ma modelu zdrowia zrodel jak
+// tor A, wiec sygnal degraded leci tylko przy calkowitej porazce (zero ofert).
+if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+  const { planMessages, sendTelegram } = await import("./telegram.mjs");
+  const snapLike = {
+    alerts,
+    products: [],
+    run: { status: offers.length ? "ok" : "error", sourcesOk: ok, sourcesBad: bad },
+  };
+  const msgs = planMessages(snapLike, state, Date.now(), rules.realertAfterHours);
+  for (const m of msgs) {
+    const r = await sendTelegram(m, {
+      token: process.env.TELEGRAM_BOT_TOKEN,
+      chatId: process.env.TELEGRAM_CHAT_ID,
+    });
+    console.log(r.ok ? "Telegram: wyslano." : `Telegram: wysylka nieudana - ${r.error}`);
+  }
+  writeJson(path.join(DATA_DIR, "state.json"), state);
+}
+
 try {
   git(["add", "-A"]);
   const staged = git(["diff", "--staged", "--name-only"]).trim();
