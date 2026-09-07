@@ -1,7 +1,8 @@
 # gen-watch
 
 Monitoring cen pięciu agregatów prądotwórczych. Skan co 3 godziny na GitHub Actions,
-alert przez Issue (GitHub wysyła za nie maila), dashboard z historią cen na GitHub Pages.
+alert przez Issue (GitHub wysyła za nie maila) i opcjonalnie Telegram, dashboard
+z historią cen na GitHub Pages.
 
 Bliźniak `role-watch` — ten sam układ gałęzi, ten sam mechanizm powiadomień, ta sama
 zasada „bot nigdy nie dotyka `main`".
@@ -53,8 +54,31 @@ dashboardzie oraz w treści alertu — ale to człowiek go ocenia, nie bot.
 4. Actions → gen-watch → **Run workflow**. Pierwszy przebieg zbuduje baseline.
 5. Dashboard: `https://<login>.github.io/gen-watch/`
 
-Żadnych sekretów. Powiadomienia idą przez Issue przypisane do właściciela repo,
-a maila wysyła sam GitHub — dlatego nie ma tu hasła do skrzynki.
+Bez sekretów działa kanał podstawowy: alert idzie przez Issue przypisane do
+właściciela repo, a maila wysyła sam GitHub — dlatego nie ma tu hasła do skrzynki.
+
+## Powiadomienia na Telegram
+
+Drugi, niezależny kanał obok Issue. Wysyłka w jedną stronę — bot tylko wypycha
+alerty, nie czyta Twoich wiadomości. Alert cenowy i sygnał o zepsutych źródłach
+lecą jako osobne wiadomości. Ten sam sygnał „degraded" nie powtarza się częściej
+niż raz na `realertAfterHours` (24 h); dopiero zmiana zestawu zepsutych źródeł
+jest nową wiadomością.
+
+Konfiguracja:
+
+1. @BotFather → `/newbot` → token. Napisz do bota dowolną wiadomość (inaczej nie
+   może odezwać się pierwszy).
+2. `chat_id`: `https://api.telegram.org/bot<TOKEN>/getUpdates`, pole
+   `result[].message.chat.id`. W czacie prywatnym to Twoje numeryczne ID.
+3. Repo → Settings → Secrets and variables → Actions → dodaj `TELEGRAM_BOT_TOKEN`
+   i `TELEGRAM_CHAT_ID`.
+4. Test: `node src/notify-telegram.mjs --test` wysyła sztywną wiadomość.
+
+Brak sekretów = krok cicho się pomija. Nieudana wysyłka nie przewraca przebiegu —
+Issue i historia zostają źródłem prawdy. Dla toru B ustaw te same wartości jako
+zmienne środowiskowe na Windowsie (`setx TELEGRAM_BOT_TOKEN "…"`); tam Telegram
+odzywa się tylko przy całkowitej porażce skanu.
 
 ## Zmiana progów i modeli
 

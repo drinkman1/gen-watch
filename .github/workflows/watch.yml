@@ -145,6 +145,19 @@ jobs:
             --assignee "${{ github.repository_owner }}" \
             --label "GEN_Alert"
 
+      # Drugi kanal, obok Issue. Wysylka w jedna strone - bot nic nie czyta.
+      # continue-on-error plus skrypt, ktory nigdy nie konczy bledem: awaria
+      # Telegrama albo brak sekretow nie moga przewrocic przebiegu. Krok musi
+      # isc PRZED zapisem historii, bo dopisuje znacznik anty-spamu do
+      # docs/data/state.json, ktory commituje nastepny krok.
+      - name: Powiadomienie na Telegram
+        if: success()
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node src/notify-telegram.mjs
+
       # success(), nie always(): przerwany przebieg ma niekompletne dane i nie
       # moze nadpisac historii.
       - name: Zapis historii na galezi data
