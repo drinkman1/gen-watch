@@ -1,0 +1,22 @@
+{
+  "productId": "ks-8100ie-atsr",
+  "scans": [
+    {
+      "ts": "2026-08-26T08:05:28.025Z",
+      "offers": [
+        {
+          "productId": "ks-8100ie-atsr",
+          "site": "inne",
+          "price": 6590,
+          "condition": "new",
+          "url": "https://www.komputronik.pl/product/958365/agregat-pradotworczy-konner-sohnen-ks-8100ie-atsr.html",
+          "title": "komputronik",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: komputronik",
+          "seenAt": "2026-08-26T08:05:28.025Z"
+        }
+      ]
+    }
+  ]
+}
