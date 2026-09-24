@@ -1,0 +1,48 @@
+name: fixtures (tymczasowy)
+
+# TYMCZASOWY - usuwany w tym samym PR przed merge'em. Zapisuje prawdziwy HTML
+# sklepow toru A do test/fixtures (tu sklepy odpowiadaja i jest Chromium) i
+# commituje go na galaz PR. Nie dotyka ani galezi data, ani Pages.
+# Push tokenem GITHUB_TOKEN nie uruchamia kolejnych workflow, wiec petli nie ma.
+
+on:
+  push:
+    branches: [claude/compassionate-heisenberg-5i76j9]
+    paths:
+      - ".github/workflows/fixtures-tmp.yml"
+      - "src/save-fixtures.mjs"
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalacja zaleznosci
+        run: npm install --no-audit --no-fund
+
+      - name: Instalacja Chromium dla Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Zapis stron toru A
+        run: node src/save-fixtures.mjs --track a
+
+      - name: Commit na galaz PR
+        run: |
+          git config user.name "gen-watch bot"
+          git config user.email "actions@github.com"
+          git add test/fixtures
+          if git diff --staged --quiet; then
+            echo "Nic nowego."
+          else
+            git commit -m "fixtures toru A z GitHub Actions"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

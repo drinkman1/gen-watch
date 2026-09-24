@@ -27,8 +27,29 @@ function diagnose(html, res) {
   return out;
 }
 
-export async function scrapeShop(product, source) {
-  const res = await smartFetch(source.url, {
+// Strona posrednia ochrony antybotowej: Amazon ("Kliknij ponizszy przycisk,
+// aby kontynuowac zakupy", 4 kB zamiast 1,3 MB) i Cloudflare ("Cierpliwosci...
+// Przeprowadzanie weryfikacji zabezpieczen"). To nie jest "inna strona"
+// (mismatch), tylko odmowa - i tak ja raportujemy. Obchodzic jej nie bedziemy.
+// Limit dlugosci, bo prawdziwa karta produktu tez potrafi zawierac slowa
+// "kontynuuj zakupy" (np. w koszyku), a strona posrednia jest zawsze mala.
+const INTERSTITIAL = [
+  [/kontynuowa[cć] zakup|continue shopping/i, "Amazon: przycisk 'Kontynuuj zakupy'"],
+  [/cierpliwo[sś]ci|weryfikacj\w* zabezpiecze|just a moment|checking your browser/i, "Cloudflare: weryfikacja zabezpieczen"],
+];
+
+export function detectInterstitial(html) {
+  const h = String(html || "");
+  if (h.length > 30000) return null;
+  const text = stripTags(h).slice(0, 2000);
+  for (const [re, label] of INTERSTITIAL) if (re.test(text)) return label;
+  return null;
+}
+
+// `fetcher` wstrzykiwany w testach na zapisanym HTML (test/fixtures);
+// w produkcji zawsze smartFetch.
+export async function scrapeShop(product, source, { fetcher = smartFetch } = {}) {
+  const res = await fetcher(source.url, {
     needsBrowser: !!source.needsBrowser,
     waitFor: source.waitFor || null,
   });
@@ -39,6 +60,9 @@ export async function scrapeShop(product, source) {
       `HTTP ${res.status || "-"}${res.error ? " (" + res.error + ")" : ""}`,
     ]);
   }
+
+  const wall = detectInterstitial(res.html);
+  if (wall) return fail("blocked", [`strona posrednia antybotu (${wall})`, ...diagnose(res.html, res)]);
 
   const match = pageMatchesProduct(res.html, product);
   if (!match.ok) {
@@ -98,13 +122,16 @@ export async function scrapeShop(product, source) {
 // najpierw probuje wyciagnac pary sklep+cena, a jak sie nie uda, cofa sie do
 // samej ceny minimalnej z JSON-LD. Druga warstwa wystarcza do alertu - tracimy
 // tylko informacje, KTORY sklep jest najtanszy.
-export async function scrapeAggregator(product, source) {
-  const res = await smartFetch(source.url, { needsBrowser: !!source.needsBrowser });
+export async function scrapeAggregator(product, source, { fetcher = smartFetch } = {}) {
+  const res = await fetcher(source.url, { needsBrowser: !!source.needsBrowser });
 
   if (!res.ok) {
     const blocked = [401, 403, 406, 429].includes(res.status);
     return fail(blocked ? "blocked" : "error", [`HTTP ${res.status || "-"}`]);
   }
+
+  const wall = detectInterstitial(res.html);
+  if (wall) return fail("blocked", [`strona posrednia antybotu (${wall})`, ...diagnose(res.html, res)]);
 
   const match = pageMatchesProduct(res.html, product);
   if (!match.ok) {
@@ -200,7 +227,7 @@ function hostOf(u) {
   try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return null; }
 }
 
-export async function scrapeSource(product, source) {
-  if (source.kind === "aggregator") return scrapeAggregator(product, source);
-  return scrapeShop(product, source);
+export async function scrapeSource(product, source, opts = {}) {
+  if (source.kind === "aggregator") return scrapeAggregator(product, source, opts);
+  return scrapeShop(product, source, opts);
 }

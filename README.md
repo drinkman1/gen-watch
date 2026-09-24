@@ -98,6 +98,37 @@ npm run check
 Testy pilnują, że próg jest niższy od ceny bazowej, że każdy model ma co najmniej
 jedno źródło niebędące `best-effort` i że wszystkie URL-e są na https.
 
+## Testy na zapisanym HTML
+
+`test/fixtures/` trzyma prawdziwą stronę **każdego** źródła z `config/products.json`
+(tor A i tor B), jako `<produkt>__<sklep>.html.gz` plus `<produkt>__<sklep>.json`. W JSON-ie
+jest adres, data zapisu i oczekiwany wynik: status, cena, warstwa, liczba ofert. `npm run check`
+przepuszcza każdą stronę przez pełny `scrapeSource`: dopasowanie produktu, warstwy ekstrakcji
+i widełki. Wynik musi się zgadzać co do grosza. Źródło w konfiguracji bez zapisanej strony
+to czerwony test. Te same testy chodzą na każdym PR (`.github/workflows/test.yml`).
+
+**Czerwony test fixture'a** znaczy jedno z dwóch:
+
+- zmieniłeś parser albo konfigurację źródła i zmienił się wynik na tej samej stronie.
+  Sprawdź, czy to zamierzone;
+- sklep przebudował stronę, a Ty odświeżyłeś fixture. Wtedy nowy `expect` trzeba porównać
+  z ceną widoczną w sklepie.
+
+**Odświeżenie po zmianie strony sklepu** (albo po dodaniu źródła):
+
+```
+node src\save-fixtures.mjs --track b                  # Ceneo, Amazon, Komputronik - z laptopa
+node src\save-fixtures.mjs --track a --only tooles    # jeden sklep toru A
+```
+
+Tor A da się zapisać także z laptopa, poza stronami renderowanymi w Chromium (KupAgregat,
+Alnar). Do nich potrzebne jest `npm install` i `npx playwright install chromium`. Skrypt
+wypisuje wynik parsera dla każdej strony. **Przed commitem porównaj ceny z dashboardem** z
+tego samego dnia, bo `expect` to wynik parsera w chwili zapisu, a nie niezależne źródło prawdy.
+
+Strona pośrednia antybotu (Amazon „Kontynuuj zakupy”, Cloudflare „Cierpliwości…”) kończy
+jako `blocked` z opisem, a nie jako `mismatch`. Bot jej nie obchodzi.
+
 ## Skąd biorą się ceny
 
 **Warstwa pewna** — bezpośrednie strony sklepów. Cena czytana warstwowo:
