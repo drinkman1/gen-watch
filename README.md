@@ -112,7 +112,8 @@ szkielet.
 **Czego tu nie ma, a było w planie:** `e-katalog.pl`, Ceneo, Amazon i Komputronik.
 Pierwszy przebieg na Actions pokazał, że wszystkie cztery oddają runnerowi w Azure
 stronę „Cierpliwości… Przeprowadzanie weryfikacji zabezpieczeń" — również przez
-Chromium. Przeniesione do toru przeglądarkowego. To boli najbardziej przy
+Chromium. Ceneo, Amazon i Komputronik przeszły do toru B1 (skan lokalny z domowego
+łącza). e-katalog odrzuca także łącze domowe (403) i wypadł całkiem. To boli najbardziej przy
 e-katalogu, bo był zaplanowany jako główna warstwa zwiadu.
 
 ## Czego ten bot NIE robi
@@ -132,7 +133,7 @@ e-katalogu, bo był zaplanowany jako główna warstwa zwiadu.
 | | Tor A — sklepy | Tor B1 — skan lokalny | Tor B2 — rynek wtórny |
 |---|---|---|---|
 | Gdzie działa | GitHub Actions, co 3 h | skrypt Node na Windowsie | Chrome na laptopie, na żądanie |
-| Co obejmuje | sklepy bezpośrednio | e-katalog, Ceneo, Amazon, Komputronik | Allegro, OLX, Allegro Lokalnie |
+| Co obejmuje | sklepy bezpośrednio | Ceneo, Amazon, Komputronik | Allegro, OLX, Allegro Lokalnie |
 | Potrzebuje laptopa | nie | tak (włączonego) | tak (z sesją Claude) |
 | Potrzebuje przeglądarki | nie | **nie** | tak |
 | Zapis do repo | bezpośrednio | bezpośrednio, poświadczeniami gita | przez Issue `GEN_Scan` |
@@ -148,23 +149,73 @@ uruchamiane lokalnie, bez modelu i bez przeglądarki.
 Allegro i OLX zostają w B2 na żądanie, bo tam i tak potrzebna jest ocena człowieka —
 motogodziny, rok, stan. Skrypt tego nie rozstrzygnie.
 
-## Skan lokalny — uruchomienie
+## Tor B na Windows — uruchomienie
 
-Najpierw jeden test bez zapisu, żeby sprawdzić, czy ochrona antybotowa przepuszcza
-Twój adres:
+Tor B1 to `skan-lokalny.bat` uruchamiany przez Harmonogram zadań. Sprawdza Ceneo, Amazon
+i Komputronik z domowego łącza i zapisuje wynik na gałęzi `data`. Całość, od zera do
+działającego zadania, to trzy kroki.
+
+### Wymagania (raz)
+
+- **Node 20+** (nodejs.org, wersja LTS) i **Git for Windows**. Sprawdzenie: `node -v`,
+  `git --version`.
+- Repo sklonowane na dysk. Dalej przykładowa ścieżka:
+  `%USERPROFILE%\Documents\CLAUDE cowork\AGREGATY\gen-watch`.
+- Git zalogowany do GitHuba. Pierwszy `git pull` albo `git push` otwiera okno Git
+  Credential Manager; po zalogowaniu poświadczenia zostają w Menedżerze poświadczeń Windows.
+- `npm install` **nie jest potrzebny**: tor B nie używa przeglądarki.
+
+### 1. Kod z GitHuba i test bez zapisu
+
+W zwykłym wierszu poleceń (cmd):
 
 ```
-cd "%USERPROFILE%\Documents\CLAUDE cowork\AGREGATY\gen-watch"
-node src/scan-local.mjs --dry
+cd /d "%USERPROFILE%\Documents\CLAUDE cowork\AGREGATY\gen-watch"
+git checkout main
+git pull
+node src\scan-local.mjs --dry
 ```
 
-Jeśli w powodach zobaczysz „Cierpliwości" albo „weryfikacja zabezpieczeń", znaczy że
-Cloudflare odrzuca także łącza domowe i ten tor nie ma sensu — wtedy zostaje B2.
+`--dry` nie dotyka gita, sprawdza tylko, czy sklepy odpowiadają. Jeśli w powodach
+zobaczysz „Cierpliwości” albo „weryfikacja zabezpieczeń”, ochrona antybotowa odrzuca
+także łącze domowe. Wtedy ten tor nie ma sensu i zostaje tor B2 (przeglądarka).
 
-Gdy test wypadnie dobrze, podepnij `skan-lokalny.bat` pod Harmonogram zadań Windows
-(dwa razy dziennie, np. 7:00 i 18:00, z opcją „Uruchom niezależnie od tego, czy
-użytkownik jest zalogowany"). Skrypt:
+### 2. Zadanie w Harmonogramie — jednym poleceniem
 
+Z katalogu repo, w zwykłym (nie administratorskim) PowerShellu:
+
+```
+powershell -ExecutionPolicy Bypass -File scripts\zainstaluj-harmonogram.ps1
+```
+
+Skrypt zakłada zadanie „gen-watch skan lokalny” (7:00 i 18:00, inne godziny:
+`-Godziny "06:30,19:00"`) z ustawieniami, które wcześniej trzeba było pamiętać, a
+które po cichu zatrzymują skan na laptopie:
+
+- **start także na baterii**, bo domyślnie Windows pomija zadanie bez zasilacza;
+- **nadrabianie przegapionego przebiegu** po wybudzeniu laptopa;
+- **logowanie interaktywne**: zadanie chodzi, gdy jesteś zalogowany (także przy
+  zablokowanym ekranie). Wcześniej README zalecało „Uruchom niezależnie od tego, czy
+  użytkownik jest zalogowany”. Bez zapisanego hasła to tryb S4U, w którym zadanie **nie
+  widzi poświadczeń gita** i push na `data` pada.
+
+Jeśli masz już zadanie założone ręcznie, skrypt je pokaże i poda polecenie do
+usunięcia. Dwa zadania to dwa równoległe skany. Na końcu skrypt uruchamia diagnostykę.
+
+Pierwszy przebieg od razu, bez czekania do 7:00:
+
+```
+Start-ScheduledTask -TaskName "gen-watch skan lokalny"
+```
+
+Wynik po minucie jest w `skan-lokalny.log`, a na gałęzi `data` pojawia się
+`docs/data/local-status.json`.
+
+### 3. Co robi każdy przebieg
+
+- **`git pull --ff-only` na `main`**, więc poprawki z GitHuba trafiają na laptopa same.
+  Gdy pull się nie uda (lokalne zmiany albo lokalne commity), skan rusza na dotychczasowym
+  kodzie, a w logu jest „UWAGA: git pull sie nie udal”;
 - klonuje gałąź `data` do `.local-data/` — **drzewo robocze zostaje nietknięte**;
 - czyta ceny tymi samymi warstwami co tor A, z tymi samymi widełkami;
 - dopisuje oferty do `docs/data/market/` i wypycha na gałąź `data`;
@@ -172,7 +223,33 @@ użytkownik jest zalogowany"). Skrypt:
   (kiedy, ile źródeł oddało cenę, kiedy ostatni udany skan);
 - gdy push zostanie odrzucony, bo tor A w międzyczasie zrobił force-push, ponawia go raz
   na świeżym stanie gałęzi;
-- loguje wszystko do `skan-lokalny.log`.
+- loguje wszystko do `skan-lokalny.log` (start, koniec i kod wyjścia każdego
+  przebiegu). Powyżej 1 MB log przechodzi do `skan-lokalny.poprzedni.log`.
+
+Kod wyjścia 1 w Harmonogramie oznacza, że skan nie zebrał ani jednej ceny albo push
+się nie udał. Szczegóły są w logu.
+
+### Gdy coś nie działa: `--doctor`
+
+```
+node src\scan-local.mjs --doctor
+```
+
+Sprawdza po kolei: wersję Node, gałąź i lokalne zmiany, zgodność z GitHubem (lokalne
+commity na `main`), odczyt i zapis do repo (`git push --dry-run`, niczego nie tworzy),
+wiek pulsu na gałęzi `data`, zmienne Telegrama, zadanie w Harmonogramie (bateria,
+nadrabianie, tryb logowania, ostatni wynik) i koniec logu. Każdy problem ma podpowiedź.
+
+| Doctor mówi | Co zrobić |
+|---|---|
+| lokalne commity na main, których nie ma na GitHubie | `git push origin main:<nazwa-gałęzi>`, potem `git reset --hard origin/main` |
+| push odrzucony | `git push` z katalogu repo i zalogowanie się w oknie Git Credential Manager |
+| logowanie S4U / nie startuje na baterii / brak nadrabiania | ponownie `scripts\zainstaluj-harmonogram.ps1` |
+| brak zadania uruchamiającego skan-lokalny.bat | `scripts\zainstaluj-harmonogram.ps1` |
+| puls: bez ani jednej ceny | ochrona antybotowa albo zmiana stron sklepów, szczegóły w `skan-lokalny.log` |
+
+Telegram dla toru B: `setx TELEGRAM_BOT_TOKEN "…"` i `setx TELEGRAM_CHAT_ID "…"`, potem
+wyloguj się i zaloguj ponownie, żeby zadanie widziało nowe zmienne.
 
 ### Puls toru B — kto zauważy, że tor B stanął
 

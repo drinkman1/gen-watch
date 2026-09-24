@@ -8,6 +8,7 @@
 //
 //   node src/scan-local.mjs --dry     # tylko sprawdz, nic nie zapisuj
 //   node src/scan-local.mjs           # sprawdz, zapisz i wypchnij
+//   node src/scan-local.mjs --doctor  # dlaczego tor B nie zapisuje danych
 //
 // Dane trafiaja do docs/data/market/, czyli tam gdzie skan przegladarkowy -
 // osobno od historii cen z toru A. Dashboard na GitHub Pages odswiezy sie przy
@@ -30,6 +31,12 @@ process.env.GEN_WATCH_NO_BROWSER = "1";
 
 const cfg = JSON.parse(fs.readFileSync(path.join(REPO, "config", "products.json"), "utf8"));
 const rules = cfg.meta.alertRules;
+
+// Diagnostyka nie skanuje i nie dotyka .local-data - tylko sprawdza srodowisko.
+if (process.argv.includes("--doctor")) {
+  const { runDoctor } = await import("./doctor.mjs");
+  process.exit(await runDoctor({ repo: REPO, cfg }));
+}
 
 function git(args, cwd = WORK) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });

@@ -19,6 +19,7 @@ import {
 } from "./telegram.mjs";
 import { buildLocalStatus, localHealth, describeHealth } from "./localstatus.mjs";
 import { mergeMarketDoc, mergeState, newerStatus, syncDataDirs } from "./datasync.mjs";
+import { assessNode, assessBranch, assessSync, assessPulse, assessTasks } from "./doctor.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -819,6 +820,64 @@ t("scalanie: skan toru B w trakcie przebiegu toru A nie ginie", () => {
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+// --- diagnostyka toru B (--doctor) ------------------------------------------
+
+t("doctor: Node ponizej 20 to blad", () => {
+  eq(assessNode("v18.19.0").level, "fail");
+  eq(assessNode("v20.11.1").level, "ok");
+});
+
+t("doctor: skan z innej galezi niz main to blad", () => {
+  eq(assessBranch("olx-lokalny", []).level, "fail");
+  eq(assessBranch("main", []).level, "ok");
+  eq(assessBranch("main", [" src/selftest.mjs"]).level, "warn");
+});
+
+// Dokladnie przypadek z 26.08.2026: dwa lokalne commity OLX na main.
+t("doctor: lokalne commity na main to blad z podpowiedzia", () => {
+  const r = assessSync("2\t0\n");
+  eq(r.level, "fail");
+  truthy(r.detail.includes("git push origin main:"), r.detail);
+  eq(assessSync("0\t3").level, "info");
+  eq(assessSync("0\t0").level, "ok");
+  eq(assessSync("").level, "warn");
+});
+
+t("doctor: puls - brak, swiezy, zepsuty JSON", () => {
+  eq(assessPulse(null, NOW).level, "fail");
+  eq(assessPulse("{nie json", NOW).level, "fail");
+  const fresh = JSON.stringify({ ts: new Date(NOW - 3600000).toISOString(), lastOkAt: new Date(NOW - 3600000).toISOString(), ok: 2, bad: 1 });
+  eq(assessPulse(fresh, NOW).level, "ok");
+});
+
+const TASK_OK = { Name: "gen-watch skan lokalny", State: "Ready", LogonType: "Interactive",
+  DisallowOnBattery: false, StartWhenAvailable: true, LastRun: "2026-09-24 07:00", LastResult: 0 };
+
+t("doctor: brak zadania w Harmonogramie to blad", () => {
+  const r = assessTasks([]);
+  eq(r.length, 1);
+  eq(r[0].level, "fail");
+  truthy(r[0].detail.includes("zainstaluj-harmonogram"), r[0].detail);
+});
+
+t("doctor: poprawne zadanie przechodzi, pojedynczy obiekt z ConvertTo-Json tez", () => {
+  eq(assessTasks([TASK_OK]).map((x) => x.level), ["ok"]);
+  eq(assessTasks(TASK_OK).map((x) => x.level), ["ok"]);
+});
+
+// Kazda z tych przyczyn po cichu zatrzymuje skan na laptopie.
+t("doctor: bateria, przegapione przebiegi, S4U, wylaczone, dwa zadania", () => {
+  const lv = (over) => assessTasks([{ ...TASK_OK, ...over }]).filter((x) => x.level !== "ok").map((x) => x.level);
+  eq(lv({ DisallowOnBattery: true }), ["warn"]);
+  eq(lv({ StartWhenAvailable: false }), ["warn"]);
+  eq(lv({ LogonType: "S4U" }), ["fail"]);
+  eq(lv({ State: "Disabled" }), ["fail"]);
+  eq(lv({ LastResult: 1 }), ["warn"]);
+  eq(lv({ LastResult: 2147942402 }), ["fail"]);
+  eq(lv({ LastRun: null, LastResult: 267011 }), ["warn"]);
+  eq(assessTasks([TASK_OK, { ...TASK_OK, Name: "stare" }])[0].level, "warn");
 });
 
 // --- konfiguracja -----------------------------------------------------------
