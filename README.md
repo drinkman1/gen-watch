@@ -168,7 +168,33 @@ użytkownik jest zalogowany"). Skrypt:
 - klonuje gałąź `data` do `.local-data/` — **drzewo robocze zostaje nietknięte**;
 - czyta ceny tymi samymi warstwami co tor A, z tymi samymi widełkami;
 - dopisuje oferty do `docs/data/market/` i wypycha na gałąź `data`;
+- **przy każdym przebiegu, także nieudanym**, zapisuje puls `docs/data/local-status.json`
+  (kiedy, ile źródeł oddało cenę, kiedy ostatni udany skan);
+- gdy push zostanie odrzucony, bo tor A w międzyczasie zrobił force-push, ponawia go raz
+  na świeżym stanie gałęzi;
 - loguje wszystko do `skan-lokalny.log`.
+
+### Puls toru B — kto zauważy, że tor B stanął
+
+Tor A przy każdym przebiegu czyta `local-status.json`. Jeśli od ostatniego **udanego**
+skanu toru B minęło więcej niż `alertRules.localStaleHours` (36 h, czyli trzy opuszczone
+przebiegi), to:
+
+- dashboard pokazuje pod nagłówkiem linię „tor B: …” z ostrzeżeniem;
+- podsumowanie przebiegu Actions ma sekcję „Tor B (skan lokalny) — CISZA”;
+- Telegram wysyła „tor B milczy” (najwyżej raz na 24 h dla tej samej ciszy).
+
+Cisza obejmuje oba przypadki: wyłączony laptop albo zepsuty git (brak nowego pulsu) oraz
+blokadę antybotową (puls jest, ale bez ani jednej ceny). Przed wdrożeniem pulsu tor B
+milczał od 26.08.2026 i nikt tego nie zauważył.
+
+### Wspólna gałąź `data`
+
+Tor A i ingest wypychają `data` z `--force`. Żeby nie skasować tego, co tor B dopisał w
+trakcie ich przebiegu, tuż przed dashboardem i force-pushem pobierają świeży stan gałęzi
+i scalają pliki pisane z zewnątrz (`src/datasync.mjs`): `market/*.json` (unia skanów),
+`state.json` (późniejszy znacznik per klucz), `local-status.json` (nowszy wygrywa).
+Historia cen toru A nie jest przy tym ruszana.
 
 Dashboard na Pages odświeży się przy najbliższym przebiegu Actions, czyli w ciągu
 trzech godzin — skrypt lokalny celowo nie dotyka publikacji.
