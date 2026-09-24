@@ -4,6 +4,7 @@ import { scrapeSource } from "./adapters/index.mjs";
 import { closeBrowser } from "./fetch.mjs";
 import { evaluate, effectiveCost, fmt } from "./alerts.mjs";
 import { ensureDirs, readJson, writeJson, loadHistory, saveHistory, DATA_DIR } from "./store.mjs";
+import { localHealth, describeHealth, LOCAL_STATUS, DEFAULT_STALE_HOURS } from "./localstatus.mjs";
 
 const argv = process.argv.slice(2);
 const only = flag("--product");
@@ -30,6 +31,14 @@ if (!products.length) {
 ensureDirs();
 const state = readJson(path.join(DATA_DIR, "state.json"), {});
 const snapshot = { generatedAt: stamp, products: [], alerts: [], run: {} };
+
+// Puls toru B z galezi data. Tor A jest jedynym torem, ktory chodzi bez
+// laptopa, wiec to on musi zauwazyc, ze tor B zamilkl.
+snapshot.local = localHealth(
+  readJson(path.join(DATA_DIR, LOCAL_STATUS), null),
+  nowMs,
+  rules.localStaleHours || DEFAULT_STALE_HOURS,
+);
 
 let sourcesOk = 0, sourcesBad = 0;
 
@@ -158,5 +167,6 @@ if (!dryRun) {
   writeJson(path.join(DATA_DIR, "runs.json"), runs.slice(-500));
 }
 
-console.log(`\nStatus: ${snapshot.run.status} · zrodla ok ${sourcesOk}/${sourcesOk + sourcesBad} · alerty ${snapshot.alerts.length}`);
+console.log(`\n${describeHealth(snapshot.local)}${snapshot.local.stale ? "  <-- CISZA" : ""}`);
+console.log(`Status: ${snapshot.run.status} · zrodla ok ${sourcesOk}/${sourcesOk + sourcesBad} · alerty ${snapshot.alerts.length}`);
 if (snapshot.run.status === "error") process.exitCode = 1;

@@ -70,6 +70,21 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run --dump"; fi
           node src/scan.mjs $ARGS
 
+      # Tor B (skan lokalny) wypycha na data w dowolnym momencie. Bez tego
+      # kroku force-push ponizej kasowalby to, co tor B dopisal w trakcie
+      # naszego przebiegu. Scalamy tylko pliki pisane z zewnatrz (market/,
+      # state.json, local-status.json); force-push i uklad katalogow bez zmian.
+      - name: Scalenie z aktualna galezia data
+        if: success()
+        run: |
+          rm -rf /tmp/data-remote && mkdir -p /tmp/data-remote
+          if git fetch --depth 1 origin +refs/heads/data:refs/remotes/origin/data-now 2>/dev/null \
+             && git archive origin/data-now docs/data 2>/dev/null | tar -x -C /tmp/data-remote; then
+            node src/datasync.mjs /tmp/data-remote/docs/data
+          else
+            echo "Brak galezi data albo docs/data - nic do scalenia."
+          fi
+
       - name: Budowa dashboardu
         if: success()
         run: node src/dashboard.mjs
@@ -96,6 +111,11 @@ jobs:
             const bad = d.products.flatMap(p => p.sources.filter(s => s.status !== "ok")
               .map(s => `- ${p.name} / ${s.shop}: \`${s.status}\`${s.bestEffort ? " (best-effort)" : ""} — ${s.issues.join("; ")}`));
             if (bad.length) L.push("", "### Zrodla do sprawdzenia", ...bad);
+            if (d.local) {
+              const l = d.local;
+              const when = l.lastOkAt ? `ostatni udany skan ${l.lastOkAt.slice(0, 16).replace("T", " ")} UTC` : "brak udanego skanu";
+              L.push("", `### Tor B (skan lokalny)${l.stale ? " — CISZA" : ""}`, `${when} · ostatni przebieg: ${l.ok}/${l.ok + l.bad} zrodel z cena`);
+            }
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, L.join("\n") + "\n");
           '
 

@@ -3,6 +3,7 @@
 // Uruchomienie: npm run check
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import {
   parsePrice, normToken, fromJsonLd, fromMicrodata, fromMeta, fromText,
@@ -14,7 +15,10 @@ import { extractBlock, validate, marketAlerts } from "./ingest.mjs";
 import {
   escapeHtml, formatAlerts, formatDegraded, degradedKey,
   shouldSendDegraded, buildSendRequest, sendTelegram, planMessages,
+  formatLocalStale,
 } from "./telegram.mjs";
+import { buildLocalStatus, localHealth, describeHealth } from "./localstatus.mjs";
+import { mergeMarketDoc, mergeState, newerStatus, syncDataDirs } from "./datasync.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -633,6 +637,7 @@ t("telegram: buildSendRequest bez tokenu albo chatId rzuca", () => {
   truthy(a && b, "brak wyjatku przy niekompletnej konfiguracji");
 });
 
+const SNAP_OK_BASE = () => JSON.parse(JSON.stringify(SNAP_OK));
 const SNAP_OK = {
   products: [
     { name: "KS 8100iE ATSR", sources: [{ shop: "morele", status: "ok", bestEffort: false }], best: { price: 4999 } },
@@ -679,6 +684,143 @@ t("telegram: planMessages tlumi powtorke sygnalu degraded", () => {
   eq(planMessages(snap, state, NOW + 3600 * 1000, 24).length, 0);
 });
 
+// --- puls toru B ------------------------------------------------------------
+
+// Tor B milczal od 26.08.2026 i nikt tego nie zauwazyl. Te testy pilnuja, ze
+// cisza jest widoczna: brak pliku, stary plik i plik z zerem ofert.
+
+const RES_OK = [
+  { productId: "ks-8100ieg", shop: "amazon", status: "ok", price: 6499 },
+  { productId: "ks-8100ieg", shop: "ceneo", status: "blocked", price: null, issue: "HTTP 403" },
+];
+const RES_NONE = [
+  { productId: "ks-8100ieg", shop: "amazon", status: "noprice", price: null, issue: "zadna warstwa" },
+];
+
+t("puls: udany przebieg ustawia lastOkAt na swoj czas", () => {
+  const s = buildLocalStatus({ ts: "2026-09-01T05:00:00.000Z", code: "abc", results: RES_OK });
+  eq(s.lastOkAt, "2026-09-01T05:00:00.000Z");
+  eq([s.ok, s.bad], [1, 1]);
+  eq(s.sources[1].issue, "HTTP 403");
+});
+
+t("puls: przebieg bez ceny przenosi lastOkAt z poprzedniego", () => {
+  const prev = { ts: "2026-09-01T05:00:00.000Z", lastOkAt: "2026-09-01T05:00:00.000Z" };
+  const s = buildLocalStatus({ ts: "2026-09-01T16:00:00.000Z", results: RES_NONE, prev });
+  eq(s.lastOkAt, "2026-09-01T05:00:00.000Z");
+  eq(s.ok, 0);
+});
+
+t("puls: brak pliku to cisza", () => {
+  const h = localHealth(null, NOW, 36);
+  eq(h.stale, true);
+  truthy(describeHealth(h).includes("nigdy"), describeHealth(h));
+});
+
+t("puls: swiezy udany skan nie jest cisza", () => {
+  const s = buildLocalStatus({ ts: new Date(NOW - 10 * 3600000).toISOString(), results: RES_OK });
+  const h = localHealth(s, NOW, 36);
+  eq(h.stale, false);
+  eq(h.ageHours, 10);
+});
+
+t("puls: udany skan sprzed 40 h to cisza", () => {
+  const s = buildLocalStatus({ ts: new Date(NOW - 40 * 3600000).toISOString(), results: RES_OK });
+  eq(localHealth(s, NOW, 36).stale, true);
+});
+
+// Laptop chodzi, ale ochrona antybotowa odrzuca wszystko - plik jest swiezy,
+// a mimo to cisza, bo liczy sie ostatni UDANY skan.
+t("puls: swiezy przebieg z zerem ofert i bez wczesniejszego sukcesu to cisza", () => {
+  const s = buildLocalStatus({ ts: new Date(NOW - 3600000).toISOString(), results: RES_NONE });
+  const h = localHealth(s, NOW, 36);
+  eq(h.stale, true);
+  truthy(describeHealth(h).includes("bez ani jednej ceny"), describeHealth(h));
+});
+
+t("telegram: cisza toru B idzie raz na okno i wraca po nowym sukcesie", () => {
+  const stale = localHealth(null, NOW, 36);
+  const snap = { ...SNAP_OK_BASE(), local: stale };
+  const state = {};
+  const first = planMessages(snap, state, NOW, 24);
+  eq(first.length, 1);
+  truthy(first[0].includes("tor B milczy"), first[0]);
+  eq(planMessages(snap, state, NOW + 3600000, 24).length, 0);
+  eq(planMessages(snap, state, NOW + 25 * 3600000, 24).length, 1);
+  const fresh = localHealth(buildLocalStatus({ ts: new Date(NOW - 3600000).toISOString(), results: RES_OK }), NOW, 36);
+  eq(planMessages({ ...SNAP_OK_BASE(), local: fresh }, state, NOW, 24).length, 0);
+  eq(formatLocalStale(fresh), null);
+});
+
+// --- scalanie z galezia data przed force-pushem -----------------------------
+
+const scan = (ts, price) => ({ ts, offers: [{ productId: "p", price }] });
+
+t("scalanie: unia skanow po ts, posortowana", () => {
+  const local = { productId: "p", scans: [scan("2026-09-01T05:00:00Z", 1), scan("2026-09-01T16:00:00Z", 2)] };
+  const remote = { productId: "p", scans: [scan("2026-09-01T05:00:00Z", 1), scan("2026-09-01T10:00:00Z", 3)] };
+  const m = mergeMarketDoc(local, remote);
+  eq(m.scans.map((s) => s.offers[0].price), [1, 3, 2]);
+});
+
+t("scalanie: przy tym samym ts wygrywa kopia lokalna", () => {
+  const m = mergeMarketDoc({ scans: [scan("2026-09-01T05:00:00Z", 1)] }, { productId: "p", scans: [scan("2026-09-01T05:00:00Z", 9)] });
+  eq(m.scans.length, 1);
+  eq(m.scans[0].offers[0].price, 1);
+  eq(m.productId, "p");
+});
+
+t("scalanie: przycina do keepScans najnowszych", () => {
+  const many = Array.from({ length: 15 }, (_, i) => scan(new Date(NOW + i * 3600000).toISOString(), i));
+  const m = mergeMarketDoc({ scans: many.slice(0, 10) }, { scans: many.slice(5) }, 12);
+  eq(m.scans.length, 12);
+  eq(m.scans[0].offers[0].price, 3);
+});
+
+t("scalanie: state bierze pozniejszy znacznik per klucz", () => {
+  eq(mergeState({ a: 5, b: 1 }, { a: 3, c: 7 }), { a: 5, c: 7, b: 1 });
+});
+
+t("scalanie: status toru B - wygrywa nowszy", () => {
+  const a = { ts: "2026-09-01T05:00:00Z" }, b = { ts: "2026-09-01T16:00:00Z" };
+  eq(newerStatus(a, b), b);
+  eq(newerStatus(b, a), b);
+  eq(newerStatus(null, a), a);
+  eq(newerStatus(a, null), a);
+});
+
+// Caly scenariusz wyscigu na plikach: tor A pobral data, w trakcie jego
+// przebiegu tor B dopisal skan i puls. Przed force-pushem ma to wrocic.
+t("scalanie: skan toru B w trakcie przebiegu toru A nie ginie", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gw-sync-"));
+  const L = path.join(root, "local"), R = path.join(root, "remote");
+  const w = (dir, rel, data) => {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), JSON.stringify(data));
+  };
+  const r = (dir, rel) => JSON.parse(fs.readFileSync(path.join(dir, rel), "utf8"));
+  const old = scan("2026-08-26T08:05:00Z", 6590);
+  const fromB = scan("2026-09-01T05:00:00Z", 6400);
+  w(L, "market/ks-8100ie-atsr.json", { productId: "ks-8100ie-atsr", scans: [old] });
+  w(L, "state.json", { "p|morele|5688": 100 });
+  w(L, "history/ks-8100ie-atsr.json", { productId: "ks-8100ie-atsr", entries: [{ ts: "x" }] });
+  w(R, "market/ks-8100ie-atsr.json", { productId: "ks-8100ie-atsr", scans: [old, fromB] });
+  w(R, "state.json", { "market|ks-8100ie-atsr|inne|6400": 200 });
+  w(R, "local-status.json", { ts: "2026-09-01T05:00:00Z", lastOkAt: "2026-09-01T05:00:00Z", ok: 1, bad: 0 });
+  w(R, "history/ks-8100ie-atsr.json", { productId: "ks-8100ie-atsr", entries: [] });
+  try {
+    const changed = syncDataDirs(L, R);
+    eq(r(L, "market/ks-8100ie-atsr.json").scans.length, 2);
+    eq(r(L, "state.json"), { "market|ks-8100ie-atsr|inne|6400": 200, "p|morele|5688": 100 });
+    eq(r(L, "local-status.json").ok, 1);
+    eq(r(L, "history/ks-8100ie-atsr.json").entries.length, 1, "historia toru A nie moze byc ruszona");
+    eq(syncDataDirs(L, R), [], "drugie scalenie nic nie zmienia");
+    truthy(changed.length === 3, "zmienione: " + changed.join(","));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // --- konfiguracja -----------------------------------------------------------
 
 t("config: parsuje sie i ma komplet pol", () => {
@@ -707,6 +849,9 @@ t("config: reguly alertu sa sensowne", () => {
   truthy(r.medianDropPct > 0 && r.medianDropPct < 30, "prog procentowy poza rozsadkiem");
   truthy(r.minSamplesForMedian >= 5, "za mala probka na mediane");
   truthy(r.realertAfterHours >= 6, "za krotkie okno ciszy przy skanie co 3h");
+  // Tor B chodzi 2x dziennie: ponizej 24 h kazdy opuszczony przebieg alarmuje,
+  // powyzej 72 h cisza wychodzi za pozno przy zakupie z terminem.
+  truthy(r.localStaleHours >= 24 && r.localStaleHours <= 72, "prog ciszy toru B poza 24-72 h");
 });
 
 // --- powiadomienia Telegram: wysylka (z wstrzyknietym fetch) --------------

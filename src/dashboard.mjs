@@ -13,6 +13,7 @@ import path from "node:path";
 import { readJson, DATA_DIR, loadHistory } from "./store.mjs";
 import { median, windowPrices, allTimeLow } from "./alerts.mjs";
 import { marketFile } from "./ingest.mjs";
+import { describeHealth } from "./localstatus.mjs";
 
 const OUT = path.join(process.cwd(), "docs", "index.html");
 const latest = readJson(path.join(DATA_DIR, "latest.json"), null);
@@ -70,6 +71,7 @@ const panels = latest.products.map((p) => {
 const payload = {
   generatedAt: latest.generatedAt,
   run: latest.run,
+  local: latest.local || null,
   alerts: latest.alerts,
   rules,
   deadline: cfg.meta.deadline || null,
@@ -185,7 +187,8 @@ function render(data) {
   <p class="sub">Ostatni skan: <b>${esc(runStamp)}</b> · status: <b>${esc(statusWord)}</b> ·
      zrodla ok ${data.run.sourcesOk}/${data.run.sourcesOk + data.run.sourcesBad}
      ${data.run.runUrl ? `· <a href="${esc(data.run.runUrl)}">przebieg</a>` : ""}
-     <span id="deadline"></span></p>
+     <span id="deadline"></span>
+     ${data.local ? `<br><span class="${data.local.stale ? "warn" : ""}">${esc(describeHealth(data.local))}${data.local.stale ? " — sprawdz Harmonogram zadan" : ""}</span>` : ""}</p>
   <div id="banner"></div>
   <div class="grid" id="grid"></div>
   <footer id="foot"></footer>

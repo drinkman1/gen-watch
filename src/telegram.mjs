@@ -9,6 +9,7 @@
 // "nowe minimum -"), a w HTML escapuje sie tylko < > &.
 
 import { fmt } from "./alerts.mjs";
+import { describeHealth } from "./localstatus.mjs";
 
 export function escapeHtml(s) {
   return String(s == null ? "" : s)
@@ -97,6 +98,28 @@ export function shouldSendDegraded(state, broken, nowMs, realertAfterHours) {
   return true;
 }
 
+// Sygnal "tor B milczy". Wysyla go tor A, bo tylko on chodzi bez laptopa.
+// Klucz zawiera lastOkAt: ta sama cisza nie wraca czesciej niz raz na
+// realertAfterHours, a kazdy nowy udany skan zaczyna liczenie od nowa.
+export function formatLocalStale(h) {
+  if (!h || !h.stale) return null;
+  return [
+    "<b>gen-watch — tor B milczy</b>",
+    escapeHtml(describeHealth(h)),
+    "",
+    "Sprawdz Harmonogram zadan na Windowsie i skan-lokalny.log.",
+  ].join("\n");
+}
+
+export function shouldSendLocalStale(state, h, nowMs, realertAfterHours) {
+  if (!h || !h.stale) return false;
+  const key = "telegram|local-stale|" + (h.lastOkAt || "never");
+  const prev = state && state[key];
+  if (prev && nowMs - prev < realertAfterHours * 3600 * 1000) return false;
+  if (state) state[key] = nowMs;
+  return true;
+}
+
 // Czyste zlozenie zadania HTTP - bez sieci, zeby test sprawdzil sam ksztalt.
 export function buildSendRequest(text, { token, chatId, disablePreview = true } = {}) {
   if (!token || !chatId) {
@@ -147,6 +170,11 @@ export function planMessages(snapshot, state, nowMs, realertAfterHours) {
       const dMsg = formatDegraded(run, broken);
       if (dMsg) messages.push(dMsg);
     }
+  }
+
+  const local = snapshot && snapshot.local;
+  if (shouldSendLocalStale(state, local, nowMs, realertAfterHours)) {
+    messages.push(formatLocalStale(local));
   }
 
   return messages;

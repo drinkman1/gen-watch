@@ -12,6 +12,9 @@
 // Dane trafiaja do docs/data/market/, czyli tam gdzie skan przegladarkowy -
 // osobno od historii cen z toru A. Dashboard na GitHub Pages odswiezy sie przy
 // najblizszym przebiegu Actions, czyli w ciagu trzech godzin.
+//
+// Przy kazdym przebiegu (takze bez ani jednej ceny) idzie tez puls
+// docs/data/local-status.json - po nim tor A poznaje, ze tor B zamilkl.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -82,11 +85,14 @@ const { scrapeSource } = await import("./adapters/index.mjs");
 const { closeBrowser } = await import("./fetch.mjs");
 const { mergeMarket, marketAlerts } = await import("./ingest.mjs");
 const { readJson, writeJson, ensureDirs, DATA_DIR } = await import("./store.mjs");
+const { buildLocalStatus, LOCAL_STATUS } = await import("./localstatus.mjs");
+const { mergeState } = await import("./datasync.mjs");
 
 ensureDirs();
 
 const offers = [];
 const report = [];
+const results = [];
 let ok = 0, bad = 0;
 
 for (const product of cfg.products) {
@@ -114,10 +120,15 @@ for (const product of cfg.products) {
           seenAt: started,
         });
       }
+      results.push({ productId: product.id, shop: source.shop, status: "ok",
+        price: Math.min(...r.offers.map((o) => o.price)), issue: null });
       report.push(`  OK   ${product.id} / ${source.shop}: ${r.offers.map((o) => o.price + " zl (" + o.shop + ")").join(", ")}`);
     } else {
       bad++;
       const why = (r.issues || []).join(" · ");
+      // "ok" bez ofert to w torze B tez porazka - zrodlo nie oddalo ceny.
+      results.push({ productId: product.id, shop: source.shop,
+        status: r.status === "ok" ? "empty" : r.status, price: null, issue: why || null });
       report.push(`  --   ${product.id} / ${source.shop}: ${r.status}${why ? " — " + why : ""}`);
     }
   }
@@ -133,7 +144,6 @@ if (!offers.length) {
   console.log("\nNic nie zebrano. Jesli w powodach widzisz \"Cierpliwosci\" albo");
   console.log("\"weryfikacja zabezpieczen\" - to znaczy, ze ochrona antybotowa odrzuca");
   console.log("takze Twoj adres, i sam skrypt tego nie przeskoczy.");
-  process.exit(DRY ? 0 : 1);
 }
 
 if (DRY) {
@@ -141,12 +151,13 @@ if (DRY) {
   process.exit(0);
 }
 
-// Zapis i alerty. Rynek "nowy" ze sklepow chodzi tym samym torem co uzywane -
-// osobno od historii cen, z jednym wyzwalaczem: prog sztywny.
-mergeMarket(offers);
-const state = readJson(path.join(DATA_DIR, "state.json"), {});
+// Alerty i Telegram licza sie raz, na stanie z galezi data. Do pliku trafiaja
+// dopiero w applyToWorkdir - jako roznica, zeby ponowienie po odrzuconym
+// pushu moglo nalozyc ja na swiezy stan zdalny.
+const statePath = path.join(DATA_DIR, "state.json");
+const state0 = readJson(statePath, {});
+const state = { ...state0 };
 const alerts = marketAlerts(offers, cfg.products, state, Date.now(), rules.realertAfterHours);
-writeJson(path.join(DATA_DIR, "state.json"), state);
 
 if (alerts.length) {
   console.log("\n=== PONIZEJ PROGU ===");
@@ -154,17 +165,24 @@ if (alerts.length) {
     console.log(`  ${a.name}: ${a.price} zl (prog ${a.threshold}) — ${a.shop}`);
     if (a.url) console.log(`     ${a.url}`);
   }
-} else {
+} else if (offers.length) {
   console.log("\nZadna oferta nie schodzi ponizej progu.");
 }
 
 // Telegram - ten sam modul co tor A. Tor B nie ma modelu zdrowia zrodel jak
-// tor A, wiec sygnal degraded leci tylko przy calkowitej porazce (zero ofert).
+// tor A, wiec sygnal o awarii leci tylko przy calkowitej porazce (zero ofert),
+// z lista zrodel, ktore nie oddaly ceny.
 if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
   const { planMessages, sendTelegram } = await import("./telegram.mjs");
+  const names = new Map(cfg.products.map((p) => [p.id, p.name]));
   const snapLike = {
     alerts,
-    products: [],
+    products: offers.length ? [] : [...names].map(([id, name]) => ({
+      name: `${name} (tor B)`,
+      best: { price: 0 },
+      sources: results.filter((r) => r.productId === id)
+        .map((r) => ({ shop: r.shop, status: r.status, bestEffort: false })),
+    })),
     run: { status: offers.length ? "ok" : "error", sourcesOk: ok, sourcesBad: bad },
   };
   const msgs = planMessages(snapLike, state, Date.now(), rules.realertAfterHours);
@@ -175,22 +193,57 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
     });
     console.log(r.ok ? "Telegram: wyslano." : `Telegram: wysylka nieudana - ${r.error}`);
   }
-  writeJson(path.join(DATA_DIR, "state.json"), state);
 }
 
-try {
-  git(["add", "-A"]);
-  const staged = git(["diff", "--staged", "--name-only"]).trim();
-  if (!staged) {
-    console.log("\nBez zmian w danych - nie ma czego wypychac.");
-  } else {
-    git(["-c", "user.name=gen-watch local", "-c", "user.email=actions@github.com",
-      "commit", "-q", "-m", `gen-watch: skan lokalny ${started.slice(0, 16)}Z`]);
-    git(["push", "origin", "HEAD:data"]);
-    console.log("\nZapisano na galezi data. Dashboard odswiezy sie przy najblizszym przebiegu Actions.");
-  }
-} catch (e) {
-  console.error("\nZapis albo push nie powiodl sie: " + (e && e.message));
-  console.error("Dane zostaly policzone, ale nie trafily do repo. Sprawdz poswiadczenia gita.");
-  process.exit(1);
+const stateUpdates = {};
+for (const [k, v] of Object.entries(state)) if (state0[k] !== v) stateUpdates[k] = v;
+
+let code = null;
+try { code = git(["rev-parse", "--short", "HEAD"], REPO).trim(); } catch { /* bez wersji */ }
+
+// Zapis do klonu galezi data. Puls idzie ZAWSZE, takze przy zerze ofert -
+// inaczej awaria toru B wygladalaby z zewnatrz dokladnie jak wylaczony laptop.
+function applyToWorkdir() {
+  const statusPath = path.join(DATA_DIR, LOCAL_STATUS);
+  const prev = readJson(statusPath, null);
+  writeJson(statusPath, buildLocalStatus({ ts: started, code, results, prev }));
+  if (offers.length) mergeMarket(offers);
+  writeJson(statePath, mergeState(stateUpdates, readJson(statePath, {})));
 }
+
+function commitAndPush() {
+  git(["add", "-A"]);
+  if (!git(["diff", "--staged", "--name-only"]).trim()) return false;
+  git(["-c", "user.name=gen-watch local", "-c", "user.email=actions@github.com",
+    "commit", "-q", "-m", `gen-watch: skan lokalny ${started.slice(0, 16)}Z`]);
+  git(["push", "origin", "HEAD:data"]);
+  return true;
+}
+
+let pushed = false;
+try {
+  applyToWorkdir();
+  pushed = commitAndPush();
+} catch (e) {
+  // Najczestszy powod: tor A zrobil w miedzyczasie force-push i nasz push nie
+  // jest juz fast-forward. Jedno ponowienie na swiezym stanie galezi.
+  console.error("\nPierwszy push odrzucony (" + String(e && e.message || e).split("\n")[0] + ") - ponawiam na swiezym stanie.");
+  try {
+    git(["fetch", "--depth", "1", "origin", "data"]);
+    git(["reset", "--hard", "origin/data"]);
+    applyToWorkdir();
+    pushed = commitAndPush();
+  } catch (e2) {
+    console.error("\nZapis albo push nie powiodl sie: " + (e2 && e2.message));
+    console.error("Dane zostaly policzone, ale nie trafily do repo. Sprawdz poswiadczenia gita.");
+    process.exit(1);
+  }
+}
+
+console.log(pushed
+  ? "\nZapisano na galezi data. Dashboard odswiezy sie przy najblizszym przebiegu Actions."
+  : "\nBez zmian w danych - nie ma czego wypychac.");
+
+// Kod 1 przy zerze ofert zostaje: Harmonogram zadan pokaze wtedy blad, a puls
+// z zerem i tak juz jest na galezi data.
+process.exit(offers.length ? 0 : 1);
