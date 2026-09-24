@@ -92,12 +92,15 @@ const { scrapeSource } = await import("./adapters/index.mjs");
 const { closeBrowser } = await import("./fetch.mjs");
 const { mergeMarket, marketAlerts } = await import("./ingest.mjs");
 const { readJson, writeJson, ensureDirs, DATA_DIR } = await import("./store.mjs");
-const { buildLocalStatus, LOCAL_STATUS } = await import("./localstatus.mjs");
+const { buildLocalStatus, pendingAlert, LOCAL_STATUS } = await import("./localstatus.mjs");
 const { mergeState } = await import("./datasync.mjs");
 
 ensureDirs();
 
 const offers = [];
+// Rabat nie jest czescia wpisu rynkowego, a przydaje sie w alercie do
+// kosztu koncowego (Amazon: 4%). Klucz: produkt|cena.
+const discountOf = new Map();
 const report = [];
 const results = [];
 let ok = 0, bad = 0;
@@ -114,6 +117,7 @@ for (const product of cfg.products) {
     if (r.status === "ok" && r.offers.length) {
       ok++;
       for (const o of r.offers) {
+        discountOf.set(`${product.id}|${o.price}`, o.discountPct || 0);
         offers.push({
           productId: product.id,
           site: siteOf(o.shop),
@@ -164,7 +168,14 @@ if (DRY) {
 const statePath = path.join(DATA_DIR, "state.json");
 const state0 = readJson(statePath, {});
 const state = { ...state0 };
-const alerts = marketAlerts(offers, cfg.products, state, Date.now(), rules.realertAfterHours);
+// marketAlerts zna tylko kategorie serwisu ("inne" dla Amazona i
+// Komputronika) - prawdziwa nazwa sklepu siedzi w title wpisu rynkowego.
+const alerts = marketAlerts(offers, cfg.products, state, Date.now(), rules.realertAfterHours)
+  .map((a) => pendingAlert({
+    productId: a.productId, name: a.name, site: a.shop, shop: a.title || a.shop,
+    price: a.price, url: a.url, threshold: a.threshold,
+    discountPct: discountOf.get(`${a.productId}|${a.price}`), seenAt: started,
+  }));
 
 if (alerts.length) {
   console.log("\n=== PONIZEJ PROGU ===");
@@ -172,18 +183,23 @@ if (alerts.length) {
     console.log(`  ${a.name}: ${a.price} zl (prog ${a.threshold}) — ${a.shop}`);
     if (a.url) console.log(`     ${a.url}`);
   }
+  console.log("Mail (Issue) wysle najblizszy przebieg toru A - w ciagu ok. 3 h.");
 } else if (offers.length) {
   console.log("\nZadna oferta nie schodzi ponizej progu.");
 }
 
-// Telegram - ten sam modul co tor A. Tor B nie ma modelu zdrowia zrodel jak
-// tor A, wiec sygnal o awarii leci tylko przy calkowitej porazce (zero ofert),
-// z lista zrodel, ktore nie oddaly ceny.
+// Telegram - ten sam modul co tor A. Alert idzie od razu; tor A wysle go
+// potem tylko jako Issue (flaga telegramSent). Sygnal o awarii leci tylko przy
+// calkowitej porazce (zero ofert), z lista zrodel, ktore nie oddaly ceny.
 if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
-  const { planMessages, sendTelegram } = await import("./telegram.mjs");
+  const { planMessages, sendTelegram, formatAlerts } = await import("./telegram.mjs");
+  const creds = { token: process.env.TELEGRAM_BOT_TOKEN, chatId: process.env.TELEGRAM_CHAT_ID };
+  const alertMsg = formatAlerts(alerts);
+  const msgs = [];
+  if (alertMsg) msgs.push({ text: alertMsg, isAlert: true });
   const names = new Map(cfg.products.map((p) => [p.id, p.name]));
   const snapLike = {
-    alerts,
+    alerts: [],
     products: offers.length ? [] : [...names].map(([id, name]) => ({
       name: `${name} (tor B)`,
       best: { price: 0 },
@@ -192,12 +208,10 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
     })),
     run: { status: offers.length ? "ok" : "error", sourcesOk: ok, sourcesBad: bad },
   };
-  const msgs = planMessages(snapLike, state, Date.now(), rules.realertAfterHours);
+  for (const text of planMessages(snapLike, state, Date.now(), rules.realertAfterHours)) msgs.push({ text });
   for (const m of msgs) {
-    const r = await sendTelegram(m, {
-      token: process.env.TELEGRAM_BOT_TOKEN,
-      chatId: process.env.TELEGRAM_CHAT_ID,
-    });
+    const r = await sendTelegram(m.text, creds);
+    if (m.isAlert && r.ok) for (const a of alerts) a.telegramSent = true;
     console.log(r.ok ? "Telegram: wyslano." : `Telegram: wysylka nieudana - ${r.error}`);
   }
 }
@@ -213,7 +227,7 @@ try { code = git(["rev-parse", "--short", "HEAD"], REPO).trim(); } catch { /* be
 function applyToWorkdir() {
   const statusPath = path.join(DATA_DIR, LOCAL_STATUS);
   const prev = readJson(statusPath, null);
-  writeJson(statusPath, buildLocalStatus({ ts: started, code, results, prev }));
+  writeJson(statusPath, buildLocalStatus({ ts: started, code, results, prev, alerts }));
   if (offers.length) mergeMarket(offers);
   writeJson(statePath, mergeState(stateUpdates, readJson(statePath, {})));
 }

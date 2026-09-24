@@ -37,6 +37,13 @@ skanie co 3 h jedna promocja dawałaby osiem maili dziennie.
 Pierwszy przebieg nigdy nie alarmuje — inaczej start bota wysyłałby pięć powiadomień
 „nowe minimum" na dzień dobry.
 
+**Alerty ze skanu lokalnego (tor B1: Ceneo, Amazon, Komputronik)** idą tym samym
+Issue `GEN_Alert`, więc tym samym mailem. Tor B nie zakłada Issue sam. Zapisuje alert
+w `docs/data/local-status.json` (`pendingAlerts`), a najbliższy przebieg toru A dokłada
+go do swoich alertów z dopiskiem „(skan lokalny)”. Mail przychodzi więc do ~3 h po
+skanie lokalnym. Na Telegram tor B wysyła alert od razu, a tor A już go nie powtarza.
+Alert niewysłany w ciągu 48 h przepada. Tor B1 ma tylko wyzwalacz progu sztywnego.
+
 **Alert porównuje cenę katalogową, nie koszt końcowy.** Progi pochodzą z cen
 katalogowych, więc doliczanie dostawy cicho przesunęłoby każdy z nich o 100–200 zł.
 Koszt końcowy (z dostawą i rabatem, gdy są znane) jest liczony i pokazywany w
@@ -138,6 +145,7 @@ e-katalogu, bo był zaplanowany jako główna warstwa zwiadu.
 | Potrzebuje przeglądarki | nie | **nie** | tak |
 | Zapis do repo | bezpośrednio | bezpośrednio, poświadczeniami gita | przez Issue `GEN_Scan` |
 | Wyzwalacze alertu | wszystkie trzy | tylko próg sztywny | tylko próg sztywny |
+| Mail (Issue `GEN_Alert`) | od razu | przy najbliższym przebiegu toru A | komentarz w Issue `GEN_Scan` |
 | Gdzie ląduje | `docs/data/history/` | `docs/data/market/` | `docs/data/market/` |
 
 Podział na B1 i B2 powstał po awarii 24.08.2026: zaplanowane zadanie w chmurze nie ma
