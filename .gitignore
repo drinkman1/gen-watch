@@ -3,3 +3,5 @@ package-lock.json
 shot.mjs
 .local-data/
 skan-lokalny.log
+skan-lokalny.poprzedni.log
+wynik.txt

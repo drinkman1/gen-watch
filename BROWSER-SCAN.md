@@ -1,11 +1,11 @@
-# Tor B — skan przez przeglądarkę (Allegro, OLX, Ceneo)
+# Tor B2 — skan przez przeglądarkę (Allegro, OLX, Allegro Lokalnie)
 
 Instrukcja dla sesji Cowork uruchamianej harmonogramem. Ten plik jest kontraktem:
 sesja czyta go i wykonuje krok po kroku, zamiast improwizować.
 
 ## Dlaczego osobny tor
 
-Allegro, OLX i Ceneo blokują adresy IP centrów danych. Runnery GitHub Actions stoją
+Allegro i OLX blokują adresy IP centrów danych. Runnery GitHub Actions stoją
 w Azure, więc główny bot się od nich odbija. Chrome na maszynie użytkownika ma czysty
 adres i zalogowaną sesję — i to jedyny powód, dla którego ten tor istnieje.
 
@@ -17,7 +17,7 @@ Chrome otwiera zakładki na ekranie użytkownika i nie ma tego robić w środku 
 
 - Laptop włączony, aplikacja Claude uruchomiona. Gdy jej nie ma, przebieg po prostu
   nie wystartuje — i to jest akceptowana dziura, nie awaria do naprawiania.
-- W rozszerzeniu Chrome nadane uprawnienia dla `allegro.pl`, `olx.pl`, `ceneo.pl`.
+- W rozszerzeniu Chrome nadane uprawnienia dla `allegro.pl` i `olx.pl`.
   Bez nich przeglądarka odmówi i tor nie ruszy ani razu.
 
 ## Co sprawdzić
@@ -33,23 +33,14 @@ Dla każdego z pięciu modeli:
 | Allegro | po EAN dla trzech modeli K&S; po nazwie dla dwóch Fogo | blokuje IP centrów danych |
 | OLX | po nazwie modelu, promień **100 km od Grodziska Mazowieckiego** | jw. |
 | Allegro Lokalnie | jak OLX | jw. |
-| **e-katalog.pl** | strona produktu, pełna lista sklepów z cenami | Cloudflare — potwierdzone 24.08.2026 |
-| Ceneo | strona produktu, lista sklepów | jw. |
-| Amazon.pl | KS 8100iEG, uwzględnij rabat 4% | interstycjał „Kontynuuj zakupy" |
-| Komputronik | KS 8100iE ATSR | Cloudflare |
 
-Cztery ostatnie pozycje trafiły tu **po pierwszym przebiegu na Actions**, nie z założenia.
-Wszystkie oddały runnerowi w Azure stronę „Cierpliwości… Przeprowadzanie weryfikacji
-zabezpieczeń", nawet przez Chromium. Z Twojego łącza otwierają się normalnie.
-
-**e-katalog jest z nich najważniejszy** — to jedyne źródło, które podaje ceny
-kilkunastu sklepów naraz i wyłapuje sklepy spoza listy. Bez niego tor A widzi tylko
-te sklepy, które ktoś wpisał ręcznie do konfiguracji.
-
-Uwaga przy e-katalogu, Ceneo, Amazonie i Komputroniku: to są **sklepy z nowym
-towarem**, więc w ładunku ustaw `"condition": "new"`. Trafią do tej samej tabeli co
-oferty z drugiej ręki i tak samo odpalą alert po przekroczeniu progu — ale nie
-wejdą do wykresu historii cen, bo ten należy do toru A.
+**Czego tu już nie ma:** e-katalog, Ceneo, Amazon i Komputronik. Po pierwszym przebiegu
+na Actions trafiły do tego toru, bo runnerowi w Azure oddawały stronę „Cierpliwości…
+Przeprowadzanie weryfikacji zabezpieczeń”. Test z łącza domowego (26.08.2026) pokazał,
+że Ceneo, Amazon i Komputronik nie potrzebują przeglądarki, tylko domowego adresu IP.
+Obsługuje je więc skan lokalny, tor B1 (`src/scan-local.mjs`, opis w README w sekcji
+„Tor B na Windows”). e-katalog odrzuca także łącze domowe (403) i nie jest sprawdzany
+nigdzie.
 
 ## Reguły oceny
 

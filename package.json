@@ -10,6 +10,7 @@
     "dry": "node src/scan.mjs --dry-run --dump",
     "local": "node src/scan-local.mjs",
     "local:dry": "node src/scan-local.mjs --dry",
+    "doctor": "node src/scan-local.mjs --doctor",
     "dashboard": "node src/dashboard.mjs",
     "check": "node src/selftest.mjs"
   },
