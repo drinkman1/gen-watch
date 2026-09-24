@@ -126,8 +126,14 @@ Alnar). Do nich potrzebne jest `npm install` i `npx playwright install chromium`
 wypisuje wynik parsera dla każdej strony. **Przed commitem porównaj ceny z dashboardem** z
 tego samego dnia, bo `expect` to wynik parsera w chwili zapisu, a nie niezależne źródło prawdy.
 
-Strona pośrednia antybotu (Amazon „Kontynuuj zakupy”, Cloudflare „Cierpliwości…”) kończy
-jako `blocked` z opisem, a nie jako `mismatch`. Bot jej nie obchodzi.
+Strona pośrednia antybotu (Amazon „Kontynuuj zakupy”, Cloudflare „Cierpliwości…”,
+„Proszę czekać…” u Profimarketu) kończy jako `blocked` z opisem, a nie jako `mismatch`.
+Bot jej nie obchodzi.
+
+Pierwsze zapisane strony od razu znalazły błąd w parserze Ceneo. Wiersze sklepów w HTML
+nie zawierają najtańszej oferty, która jest tylko w JSON-LD porównywarki: 6 466,51 zamiast
+6 819 z wierszy. Porównywarka dokłada teraz cenę z JSON-LD, gdy jest niższa niż wszystkie
+wiersze.
 
 ## Skąd biorą się ceny
 

@@ -141,14 +141,10 @@ export async function scrapeAggregator(product, source, { fetcher = smartFetch }
   }
 
   const offers = parseAggregatorRows(res.html, source.shop);
-  if (offers.length) return ok(offers, res.escalatedFrom ? ["poszlo przez Chromium"] : []);
-
   const expect = [product.ean, ...(product.matchTokens || [])].filter(Boolean);
   const { min, max } = priceBounds(product.baseline);
   const got = extractPrice(res.html, { expectTokens: expect, min, max });
-  if (got.price == null) return fail("noprice", ["ani wierszy sklepow, ani ceny zbiorczej", got.reason]);
-
-  return ok([{
+  const summary = () => ({
     shop: source.shop,
     price: got.price,
     currency: got.currency || "PLN",
@@ -157,8 +153,25 @@ export async function scrapeAggregator(product, source, { fetcher = smartFetch }
     method: got.method,
     shipping: null,
     discountPct: 0,
-    note: "cena zbiorcza z porownywarki - sklep nierozpoznany",
-  }], ["nie udalo sie rozbic na sklepy, zostala cena minimalna"]);
+    note: "najnizsza cena wg danych strukturalnych porownywarki - sklep nierozpoznany",
+  });
+
+  if (offers.length) {
+    // Wiersze sklepow bywaja niepelne. 24.09.2026 Ceneo mialo 4 oferty, w
+    // atrybutach data-shop/data-price byly 3 (6 819, 6 819, 6 898,75), a
+    // najtansza (6 466,51) tylko w JSON-LD porownywarki. Bez tego bot bral
+    // zawyzone minimum - stad dawna notatka "Ceneo bywa zawyzone".
+    const rowMin = Math.min(...offers.map((o) => o.price));
+    const issues = res.escalatedFrom ? ["poszlo przez Chromium"] : [];
+    if (got.price != null && got.price < rowMin) {
+      offers.push(summary());
+      issues.push(`najtansza oferta (${got.price}) tylko w danych strukturalnych, bez nazwy sklepu`);
+    }
+    return ok(offers, issues);
+  }
+
+  if (got.price == null) return fail("noprice", ["ani wierszy sklepow, ani ceny zbiorczej", got.reason]);
+  return ok([summary()], ["nie udalo sie rozbic na sklepy, zostala cena minimalna"]);
 }
 
 // Szuka fragmentow, w ktorych blisko siebie stoi nazwa sklepu i kwota w zl.

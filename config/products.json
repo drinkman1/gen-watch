@@ -112,7 +112,7 @@
           "kind": "aggregator",
           "url": "https://www.ceneo.pl/123009746",
           "bestEffort": true,
-          "note": "Oddaje cene, ale numeryczne id sklepow uniemozliwiaja wskazanie sprzedawcy, a wartosc bywa zawyzona (6 819 zl przy 5 688 w Morele). Traktowac jako sygnal, nie zrodlo prawdy."
+          "note": "Oddaje cene, ale numeryczne id sklepow uniemozliwiaja wskazanie sprzedawcy. Dawne \"zawyzone\" 6 819 zl to byl blad parsera: najtansza oferta jest tylko w JSON-LD Ceneo (24.09.2026: 6 466,51), a wiersze sklepow jej nie maja - naprawione w scrapeAggregator, pilnuje tego test na test/fixtures/ks-8100ieg__ceneo."
         },
         {
           "shop": "amazon",
