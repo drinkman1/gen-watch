@@ -17,7 +17,9 @@ import {
   shouldSendDegraded, buildSendRequest, sendTelegram, planMessages,
   formatLocalStale,
 } from "./telegram.mjs";
-import { buildLocalStatus, localHealth, describeHealth } from "./localstatus.mjs";
+import {
+  buildLocalStatus, localHealth, describeHealth, pendingAlert, mergePending, localAlertsForSnapshot, mailedKey,
+} from "./localstatus.mjs";
 import { mergeMarketDoc, mergeState, newerStatus, syncDataDirs } from "./datasync.mjs";
 import { assessNode, assessBranch, assessSync, assessPulse, assessTasks } from "./doctor.mjs";
 
@@ -878,6 +880,54 @@ t("doctor: bateria, przegapione przebiegi, S4U, wylaczone, dwa zadania", () => {
   eq(lv({ LastResult: 2147942402 }), ["fail"]);
   eq(lv({ LastRun: null, LastResult: 267011 }), ["warn"]);
   eq(assessTasks([TASK_OK, { ...TASK_OK, Name: "stare" }])[0].level, "warn");
+});
+
+// --- alerty toru B ida tym samym Issue co alerty toru A --------------------
+
+// Wczesniej alert progowy ze skanu lokalnego (Ceneo, Amazon, Komputronik)
+// konczyl w logu na Windowsie i ewentualnie na Telegramie - nigdy w mailu.
+
+const PROD_EG = { id: "ks-8100ieg", name: "Könner & Söhnen KS 8100iEG", baseline: 5688, hardThreshold: 5400 };
+const T0 = new Date(NOW - 2 * 3600000).toISOString();
+const PA = pendingAlert({ productId: "ks-8100ieg", name: PROD_EG.name, site: "inne", shop: "amazon",
+  price: 5300, url: "https://www.amazon.pl/dp/B09DTLH354", threshold: 5400, discountPct: 4, seenAt: T0 });
+
+t("tor B alert: prawdziwy sklep zamiast 'inne', id z chwila skanu", () => {
+  eq(PA.shop, "amazon");
+  truthy(PA.id.includes("|inne|5300|") && PA.id.endsWith(T0), PA.id);
+  eq(PA.telegramSent, false);
+});
+
+t("tor B alert: kolejny przebieg nie kasuje niewyslanego, 48 h to koniec", () => {
+  const prev = { ts: T0, lastOkAt: T0, pendingAlerts: [PA] };
+  const s = buildLocalStatus({ ts: new Date(NOW).toISOString(), results: RES_OK, prev });
+  eq(s.pendingAlerts.length, 1);
+  eq(mergePending([PA], [], Date.parse(T0) + 49 * 3600000).length, 0);
+  eq(mergePending([PA], [PA], NOW).length, 1, "ten sam alert nie dubluje sie");
+});
+
+t("tor B alert: w snapshot.alerts w ksztalcie toru A (Issue, dashboard)", () => {
+  const got = localAlertsForSnapshot({ pendingAlerts: [PA] }, {}, [PROD_EG], NOW);
+  eq(got.length, 1);
+  const a = got[0].alert;
+  eq(a.shop, "amazon (skan lokalny)");
+  eq(a.baseline, 5688);
+  eq(a.effective, { cost: 5088, shippingKnown: false }, "rabat 4% w koszcie koncowym");
+  truthy(a.reasons[0].code === "hard" && a.reasons[0].text.includes("skan lokalny"), a.reasons[0].text);
+  eq(got[0].key, mailedKey(PA));
+});
+
+t("tor B alert: wyslany raz - drugi przebieg toru A go pomija", () => {
+  const state = { [mailedKey(PA)]: NOW - 3600000 };
+  eq(localAlertsForSnapshot({ pendingAlerts: [PA] }, state, [PROD_EG], NOW).length, 0);
+  eq(localAlertsForSnapshot(null, {}, [PROD_EG], NOW).length, 0);
+});
+
+t("tor B alert: juz wyslany na Telegram przez tor B nie idzie tam drugi raz", () => {
+  const sent = localAlertsForSnapshot({ pendingAlerts: [{ ...PA, telegramSent: true }] }, {}, [PROD_EG], NOW)[0].alert;
+  const fresh = localAlertsForSnapshot({ pendingAlerts: [PA] }, {}, [PROD_EG], NOW)[0].alert;
+  eq(planMessages({ ...SNAP_OK_BASE(), alerts: [sent] }, {}, NOW, 24).length, 0);
+  eq(planMessages({ ...SNAP_OK_BASE(), alerts: [fresh] }, {}, NOW, 24).length, 1);
 });
 
 // --- konfiguracja -----------------------------------------------------------

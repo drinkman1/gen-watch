@@ -148,7 +148,9 @@ export function buildSendRequest(text, { token, chatId, disablePreview = true } 
 export function planMessages(snapshot, state, nowMs, realertAfterHours) {
   const messages = [];
 
-  const alertMsg = formatAlerts(snapshot && snapshot.alerts);
+  // Alerty z toru B, ktore tor B juz sam wyslal na Telegram, ida tylko do
+  // Issue - bez tego ta sama okazja przyszlaby na Telegram dwa razy.
+  const alertMsg = formatAlerts(((snapshot && snapshot.alerts) || []).filter((a) => !a.telegramSent));
   if (alertMsg) messages.push(alertMsg);
 
   const run = snapshot && snapshot.run;
