@@ -4,6 +4,7 @@
 //   node src/save-fixtures.mjs --track a    # sources (tor A), z Chromium
 //   node src/save-fixtures.mjs --track b    # localSources (tor B), bez przegladarki
 //   node src/save-fixtures.mjs --track b --only amazon
+//   node src/save-fixtures.mjs --track a --only kupagregat,profimarket
 //
 // Tor A zapisuje GitHub Actions (tam sklepy odpowiadaja, a Chromium jest pod
 // reka), tor B - laptop z domowego lacza, bo Ceneo, Amazon i Komputronik
@@ -57,7 +58,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const argv = process.argv.slice(2);
   const arg = (n) => { const i = argv.indexOf(n); return i > -1 ? argv[i + 1] : null; };
   const track = arg("--track");
-  const only = arg("--only");
+  const only = arg("--only") ? arg("--only").split(",").map((x) => x.trim()) : null;
   if (track !== "a" && track !== "b") {
     console.error("Podaj --track a (sklepy toru A) albo --track b (Ceneo/Amazon/Komputronik z laptopa).");
     process.exit(2);
@@ -73,7 +74,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   let saved = 0;
   for (const product of cfg.products) {
     for (const source of (track === "a" ? product.sources : product.localSources) || []) {
-      if (only && source.shop !== only) continue;
+      if (only && !only.includes(source.shop)) continue;
       const name = fixtureName(product.id, source.shop);
       const res = await smartFetch(source.url, { needsBrowser: !!source.needsBrowser, waitFor: source.waitFor || null });
       // Odmowa HTTP (403, 5xx) nie testuje parsera - nie nadpisujemy nia

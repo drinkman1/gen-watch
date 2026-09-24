@@ -939,6 +939,8 @@ t("antybot: strona posrednia Amazona i Cloudflare rozpoznana", () => {
   truthy(detectInterstitial("<title>Amazon.pl</title><p>Kliknij poniższy przycisk, aby kontynuować zakupy</p><button>Kontynuuj zakupy</button>"));
   truthy(detectInterstitial("<title>Cierpliwości...</title><p>Przeprowadzanie weryfikacji zabezpieczeń</p>"));
   truthy(detectInterstitial("<title>Just a moment...</title>"));
+  // Profimarket 24.09.2026 - zapisana strona w test/fixtures.
+  truthy(detectInterstitial("<title>Proszę czekać…</title><div class=\"throbber\"></div>"));
 });
 
 t("antybot: pelna karta produktu ze slowami 'kontynuuj zakupy' to nie strona posrednia", () => {

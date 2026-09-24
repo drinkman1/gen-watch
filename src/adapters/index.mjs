@@ -36,6 +36,8 @@ function diagnose(html, res) {
 const INTERSTITIAL = [
   [/kontynuowa[cć] zakup|continue shopping/i, "Amazon: przycisk 'Kontynuuj zakupy'"],
   [/cierpliwo[sś]ci|weryfikacj\w* zabezpiecze|just a moment|checking your browser/i, "Cloudflare: weryfikacja zabezpieczen"],
+  // Profimarket 24.09.2026: 12 kB, tytul "Prosze czekac...", spinner i skrypt.
+  [/prosz[eę] czeka[cć]/i, "strona 'Prosze czekac' ze skryptem weryfikujacym"],
 ];
 
 export function detectInterstitial(html) {

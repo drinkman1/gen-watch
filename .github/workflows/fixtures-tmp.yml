@@ -32,8 +32,10 @@ jobs:
       - name: Instalacja Chromium dla Playwright
         run: npx playwright install --with-deps chromium
 
+      # Drugie podejscie: w pierwszym KupAgregat przekroczyl limit Chromium,
+      # a Profimarket oddal strone posrednia "Prosze czekac".
       - name: Zapis stron toru A
-        run: node src/save-fixtures.mjs --track a
+        run: node src/save-fixtures.mjs --track a --only kupagregat,profimarket
 
       - name: Commit na galaz PR
         run: |
