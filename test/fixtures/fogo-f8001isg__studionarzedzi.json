@@ -1,0 +1,18 @@
+{
+  "productId": "fogo-f8001isg",
+  "shop": "studionarzedzi",
+  "track": "a",
+  "url": "https://studionarzedzi.pl/inwerterowe/4719-fogo-f-8001-isg.html",
+  "finalUrl": "https://studionarzedzi.pl/inwerterowe/4719-fogo-f-8001-isg.html",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:31.346Z",
+  "bytes": 521815,
+  "expect": {
+    "status": "ok",
+    "price": 8599,
+    "method": "jsonld",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

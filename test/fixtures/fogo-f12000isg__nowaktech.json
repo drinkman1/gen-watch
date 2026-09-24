@@ -1,0 +1,18 @@
+{
+  "productId": "fogo-f12000isg",
+  "shop": "nowaktech",
+  "track": "a",
+  "url": "https://sklep.nowaktech.pl/strona-glowna/2280-agregat-pradotworczy-fogo-f-12000-isg-inwerter-benzyna-lpg",
+  "finalUrl": "https://sklep.nowaktech.pl/strona-glowna/2280-agregat-pradotworczy-fogo-f-12000-isg-inwerter-benzyna-lpg",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:41.296Z",
+  "bytes": 115323,
+  "expect": {
+    "status": "ok",
+    "price": 12232.05,
+    "method": "microdata",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

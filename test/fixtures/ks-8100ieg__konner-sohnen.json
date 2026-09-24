@@ -1,0 +1,18 @@
+{
+  "productId": "ks-8100ieg",
+  "shop": "konner-sohnen",
+  "track": "a",
+  "url": "https://konner-sohnen.pl/en/products/dual-fuel-generators-ks-8100ieg",
+  "finalUrl": "https://konner-sohnen.pl/en/products/dual-fuel-generators-ks-8100ieg",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:27.214Z",
+  "bytes": 545962,
+  "expect": {
+    "status": "ok",
+    "price": 6819,
+    "method": "jsonld",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}
