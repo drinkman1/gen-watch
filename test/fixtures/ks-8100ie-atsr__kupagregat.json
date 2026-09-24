@@ -1,0 +1,18 @@
+{
+  "productId": "ks-8100ie-atsr",
+  "shop": "kupagregat",
+  "track": "a",
+  "url": "https://kupagregat.pl/p/agregat-inwertorowy-ks-8100ie-atsr-8kw-47",
+  "finalUrl": "https://kupagregat.pl/p/agregat-inwertorowy-ks-8100ie-atsr-8kw-47",
+  "httpStatus": 200,
+  "via": "browser",
+  "capturedAt": "2026-09-24T11:35:32.726Z",
+  "bytes": 226592,
+  "expect": {
+    "status": "ok",
+    "price": 4999,
+    "method": "jsonld",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}
