@@ -1,0 +1,22 @@
+{
+  "productId": "ks-8100ieg",
+  "shop": "amazon",
+  "track": "b",
+  "url": "https://www.amazon.pl/dp/B09DTLH354",
+  "finalUrl": "https://www.amazon.pl/dp/B09DTLH354",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:39:16.583Z",
+  "bytes": 4251,
+  "expect": {
+    "status": "blocked",
+    "price": null,
+    "method": null,
+    "offers": 0
+  },
+  "issuesAtCapture": [
+    "strona posrednia antybotu (Amazon: przycisk 'Kontynuuj zakupy')",
+    "tytul: \"Amazon.pl\"",
+    "4 kB, via fixture"
+  ]
+}
