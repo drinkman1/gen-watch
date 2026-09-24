@@ -23,6 +23,9 @@ import {
 } from "./localstatus.mjs";
 import { mergeMarketDoc, mergeState, newerStatus, syncDataDirs } from "./datasync.mjs";
 import { assessNode, assessBranch, assessSync, assessPulse, assessTasks } from "./doctor.mjs";
+import {
+  planPriceChanges, dailyReportDue, warsawParts, priceDayAgo, formatDailyReport, formatTestMessage, bestKey, FLAP_HOURS,
+} from "./digest.mjs";
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -981,6 +984,110 @@ for (const name of fixtureNames) {
     if (got.method) methodsCovered.add(got.method);
   });
 }
+
+// --- Telegram: zmiany cen i raport dzienny ----------------------------------
+
+// Bot pisal tylko przy alercie i awarii - przez miesiac prawie nic. Uzytkownik
+// chce wiedziec, co sie dzieje: kazda zmiana najnizszej ceny i raport rano.
+
+const ATSR = {
+  id: "ks-8100ie-atsr", name: "KS 8100iE ATSR", hardThreshold: 4800, baseline: 4999,
+  best: { shop: "kupagregat", price: 4999, url: "https://kupagregat.pl/p/x" },
+  sources: [{ shop: "kupagregat", status: "ok" }, { shop: "morele", status: "ok" }],
+};
+const withBest = (shop, price, down = []) => ({
+  ...ATSR, best: { shop, price, url: null },
+  sources: ATSR.sources.map((s) => ({ ...s, status: down.includes(s.shop) ? "error" : "ok" })),
+});
+
+t("zmiany cen: pierwszy przebieg tylko zapisuje stan", () => {
+  const r = planPriceChanges([ATSR], {}, NOW);
+  eq(r.text, null);
+  eq(r.silent[bestKey(ATSR.id)].price, 4999);
+});
+
+t("zmiany cen: spadek i wzrost, z odlegloscia od progu", () => {
+  const state = { [bestKey(ATSR.id)]: { price: 4999, shop: "kupagregat" } };
+  const down = planPriceChanges([withBest("kupagregat", 4899)], state, NOW);
+  truthy(down.text.includes("📉") && down.text.includes(fmt(4899)) && down.text.includes("brakuje " + fmt(99)), down.text);
+  eq(down.updates[bestKey(ATSR.id)].price, 4899);
+  const up = planPriceChanges([withBest("kupagregat", 5099)], state, NOW);
+  truthy(up.text.includes("📈") && up.text.includes("+2%"), up.text);
+  const below = planPriceChanges([withBest("kupagregat", 4700)], state, NOW);
+  truthy(below.text.includes("PONIZEJ progu"), below.text);
+});
+
+t("zmiany cen: ta sama cena nic nie wysyla", () => {
+  const state = { [bestKey(ATSR.id)]: { price: 4999, shop: "kupagregat" } };
+  eq(planPriceChanges([ATSR], state, NOW).text, null);
+});
+
+// Prawdziwy wzorzec: KupAgregat co kilka przebiegow nie odpowiada, wtedy
+// najnizsza cena skacze do Morele i wraca. To nie jest zmiana ceny.
+t("zmiany cen: migotanie sklepu nie daje wiadomosci", () => {
+  const state = { [bestKey(ATSR.id)]: { price: 4999, shop: "kupagregat" } };
+  const flap = planPriceChanges([withBest("morele", 6287.43, ["kupagregat"])], state, NOW);
+  eq(flap.text, null);
+  truthy(flap.silent[bestKey(ATSR.id)].missingSince, "musi zapamietac poczatek niedostepnosci");
+  Object.assign(state, flap.silent);
+  const back = planPriceChanges([ATSR], state, NOW + 3 * 3600000);
+  eq(back.text, null, "powrot tej samej ceny to nie zmiana");
+  eq(back.silent[bestKey(ATSR.id)].missingSince, undefined, "powrot czysci znacznik");
+});
+
+t("zmiany cen: po 24 h niedostepnosci sklepu nowa cena jest zglaszana z powodem", () => {
+  const state = { [bestKey(ATSR.id)]: { price: 4999, shop: "kupagregat", missingSince: new Date(NOW - (FLAP_HOURS + 1) * 3600000).toISOString() } };
+  const r = planPriceChanges([withBest("morele", 6287.43, ["kupagregat"])], state, NOW);
+  truthy(r.text && r.text.includes("nie odpowiada od 24 h"), r.text);
+});
+
+t("zmiany cen: tanszy inny sklep przy dzialajacym poprzednim to zmiana", () => {
+  const state = { [bestKey(ATSR.id)]: { price: 4999, shop: "kupagregat" } };
+  truthy(planPriceChanges([withBest("morele", 4950)], state, NOW).text.includes(fmt(4950)));
+});
+
+t("raport dzienny: czas warszawski, raz na dobe, nie przed 7:00", () => {
+  // 2026-09-01T04:30Z = 6:30 w Warszawie (CEST), 05:10Z = 7:10.
+  eq(warsawParts(Date.parse("2026-09-01T04:30:00Z")), { date: "2026-09-01", hour: 6 });
+  eq(dailyReportDue({}, Date.parse("2026-09-01T04:30:00Z"), 7), null);
+  eq(dailyReportDue({}, Date.parse("2026-09-01T05:10:00Z"), 7), "telegram|daily|2026-09-01");
+  eq(dailyReportDue({ "telegram|daily|2026-09-01": 1 }, Date.parse("2026-09-01T09:00:00Z"), 7), null);
+  // Zima (CET): 06:10Z = 7:10.
+  eq(warsawParts(Date.parse("2026-11-10T06:10:00Z")).hour, 7);
+});
+
+t("raport dzienny: zmiana od wczoraj z historii", () => {
+  // Wpisy co 12 h: 36 h, 24 h i 12 h temu - "wczoraj" to wpis sprzed 24 h.
+  eq(priceDayAgo(hist([5100, 5050, 4999], { spacingDays: 0.5 }), NOW), 5050);
+  eq(priceDayAgo([], NOW), null);
+});
+
+t("raport dzienny: tresc i dlugosc", () => {
+  const products = [ATSR, { ...ATSR, id: "b", name: "Fogo F 8001 iSG", best: null }];
+  const text = formatDailyReport({
+    snapshot: { products, local: localHealth(null, NOW, 36) },
+    histories: { [ATSR.id]: hist([5100, 5050, 4999], { spacingDays: 0.5 }) },
+    markets: { [ATSR.id]: { scans: [{ ts: new Date(NOW - 3600000).toISOString(), offers: [{ price: 4700, site: "olx", condition: "used", match: "czesciowe" }] }] } },
+    deadline: "2026-11-22", dashboardUrl: "https://drinkman1.github.io/gen-watch/", nowMs: NOW,
+  });
+  for (const want of ["KS 8100iE ATSR", fmt(4999), "−" + fmt(51) + " od wczoraj", "brakuje " + fmt(199),
+    "rynek (24 h): " + fmt(4700), "do obejrzenia", "brak ceny", "tor B", "Do terminu zakupu", "dashboard"]) {
+    truthy(text.includes(want), `brak "${want}" w raporcie:\n${text}`);
+  }
+  truthy(text.length < 4096, "raport za dlugi dla Telegrama: " + text.length);
+});
+
+t("telegram: wiadomosc testowa ma godzine i ceny", () => {
+  const s = formatTestMessage({ products: [ATSR] }, NOW);
+  truthy(s.includes("test polaczenia") && s.includes(fmt(4999)), s);
+});
+
+t("config: sekcja telegram", () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(process.cwd(), "config", "products.json"), "utf8"));
+  const tg = cfg.meta.telegram;
+  truthy(tg && typeof tg.daily === "boolean" && typeof tg.changes === "boolean", "meta.telegram.daily/changes");
+  truthy(tg.dailyFromHour >= 5 && tg.dailyFromHour <= 12, "raport rano");
+});
 
 // --- konfiguracja -----------------------------------------------------------
 

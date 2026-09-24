@@ -66,13 +66,37 @@ właściciela repo, a maila wysyła sam GitHub — dlatego nie ma tu hasła do s
 
 ## Powiadomienia na Telegram
 
-Drugi, niezależny kanał obok Issue. Wysyłka w jedną stronę — bot tylko wypycha
-alerty, nie czyta Twoich wiadomości. Alert cenowy i sygnał o zepsutych źródłach
-lecą jako osobne wiadomości. Ten sam sygnał „degraded" nie powtarza się częściej
-niż raz na `realertAfterHours` (24 h); dopiero zmiana zestawu zepsutych źródeł
-jest nową wiadomością.
+Drugi, niezależny kanał obok Issue. Wysyłka w jedną stronę: bot tylko wypycha
+wiadomości, nie czyta Twoich. Wszystko poza wiadomością testową wysyła tor A
+(Actions), przy przebiegu co 3 h.
 
-Konfiguracja:
+| Wiadomość | Kiedy | Ile razy |
+|---|---|---|
+| **Alert** | cena poniżej progu, 7% pod medianą 30 dni albo nowe minimum; także alerty z toru B (Ceneo, Amazon, Komputronik) | ta sama cena w tym samym sklepie najwyżej raz na 24 h |
+| **Zmiana ceny** 📉📈 | najniższa cena modelu zmieniła się w dowolną stronę; z informacją, ile brakuje do progu | przy każdej zmianie |
+| **Raport dzienny** | pierwszy przebieg po 7:00 (czasu polskiego), czyli zwykle ok. 8:00 | raz dziennie |
+| **Awaria źródeł** | padło źródło, na którym polegamy (nie „best-effort”) | ten sam zestaw awarii raz na 24 h |
+| **Tor B milczy** | 36 h bez udanego skanu lokalnego | raz na 24 h |
+| **Test** | ręcznie: Actions → „telegram test” → Run workflow | na żądanie |
+
+**Raport dzienny** pokazuje dla każdego modelu:
+- najniższą cenę i sklep;
+- zmianę od wczoraj;
+- ile brakuje do progu (w zł i w %);
+- minimum z całej obserwacji;
+- najtańszą ofertę rynkową z ostatniej doby (tor B, Issue `GEN_Scan`).
+
+Pod listą modeli: stan toru B, dni do terminu zakupu i link do dashboardu.
+
+**Zmiana ceny nie reaguje na chwilową niedostępność sklepu.** Gdy KupAgregat nie
+odpowie, najniższa cena na moment skacze do Morele i zaraz wraca. Bot czeka wtedy na
+powrót sklepu, najwyżej 24 h. Potem zgłasza nową cenę z dopiskiem „<sklep> nie
+odpowiada od 24 h”.
+
+Rodzaje wiadomości włącza i wyłącza `meta.telegram` w `config/products.json`
+(`changes`, `daily`, `dailyFromHour`). Alerty, awarie i cisza toru B idą zawsze.
+
+Konfiguracja (raz):
 
 1. @BotFather → `/newbot` → token. Napisz do bota dowolną wiadomość (inaczej nie
    może odezwać się pierwszy).
@@ -80,12 +104,19 @@ Konfiguracja:
    `result[].message.chat.id`. W czacie prywatnym to Twoje numeryczne ID.
 3. Repo → Settings → Secrets and variables → Actions → dodaj `TELEGRAM_BOT_TOKEN`
    i `TELEGRAM_CHAT_ID`.
-4. Test: `node src/notify-telegram.mjs --test` wysyła sztywną wiadomość.
+4. Test: Actions → **telegram test** → **Run workflow**. Przychodzi wiadomość z godziną
+   i aktualnymi cenami. Czerwony przebieg oznacza brak sekretów albo odmowę Telegrama;
+   powód jest w logu.
 
-Brak sekretów = krok cicho się pomija. Nieudana wysyłka nie przewraca przebiegu —
-Issue i historia zostają źródłem prawdy. Dla toru B ustaw te same wartości jako
-zmienne środowiskowe na Windowsie (`setx TELEGRAM_BOT_TOKEN "…"`); tam Telegram
-odzywa się tylko przy całkowitej porażce skanu.
+Brak sekretów = krok w skanie cicho się pomija. Nieudana wysyłka nie przewraca
+przebiegu, bo Issue i historia zostają źródłem prawdy. Stan zmiany ceny i raportu
+dziennego zapisuje się dopiero po udanej wysyłce. Nieudany raport pójdzie więc przy
+następnym przebiegu i nie przepadnie na cały dzień.
+
+Dla toru B można ustawić te same wartości jako zmienne środowiskowe na Windowsie
+(`setx TELEGRAM_BOT_TOKEN "…"`). Wtedy laptop sam pisze od razu przy okazji ze
+skanu lokalnego i przy całkowitej porażce skanu. Bez tego te same alerty przychodzą
+i tak, tylko przez tor A, czyli z opóźnieniem do ~3 h.
 
 ## Zmiana progów i modeli
 
