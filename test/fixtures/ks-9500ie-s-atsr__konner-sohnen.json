@@ -1,0 +1,18 @@
+{
+  "productId": "ks-9500ie-s-atsr",
+  "shop": "konner-sohnen",
+  "track": "a",
+  "url": "https://konner-sohnen.pl/en/products/inverter-generator-ks-9500ie-s-atsr",
+  "finalUrl": "https://konner-sohnen.pl/en/products/inverter-generator-ks-9500ie-s-atsr",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:29.718Z",
+  "bytes": 483241,
+  "expect": {
+    "status": "ok",
+    "price": 9859,
+    "method": "jsonld",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

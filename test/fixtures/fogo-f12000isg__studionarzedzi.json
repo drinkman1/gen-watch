@@ -1,0 +1,18 @@
+{
+  "productId": "fogo-f12000isg",
+  "shop": "studionarzedzi",
+  "track": "a",
+  "url": "https://studionarzedzi.pl/inwerterowe/4546-fogo-f-12000-isg.html",
+  "finalUrl": "https://studionarzedzi.pl/inwerterowe/4546-fogo-f-12000-isg.html",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:36.051Z",
+  "bytes": 444397,
+  "expect": {
+    "status": "ok",
+    "price": 11899,
+    "method": "jsonld",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

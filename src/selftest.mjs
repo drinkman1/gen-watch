@@ -9,7 +9,8 @@ import {
   parsePrice, normToken, fromJsonLd, fromMicrodata, fromMeta, fromText,
   extractPrice, pageMatchesProduct, fromPriceAttrs, priceBounds, guessBounds,
 } from "./extract.mjs";
-import { parseAggregatorRows } from "./adapters/index.mjs";
+import { parseAggregatorRows, scrapeSource, detectInterstitial } from "./adapters/index.mjs";
+import { FIXTURE_DIR, fixtureName, fixtureFetcher, loadFixture, summarize } from "./save-fixtures.mjs";
 import { evaluate, median, allTimeLow, windowPrices, effectiveCost, fmt, DAY } from "./alerts.mjs";
 import { extractBlock, validate, marketAlerts } from "./ingest.mjs";
 import {
@@ -930,6 +931,57 @@ t("tor B alert: juz wyslany na Telegram przez tor B nie idzie tam drugi raz", ()
   eq(planMessages({ ...SNAP_OK_BASE(), alerts: [fresh] }, {}, NOW, 24).length, 1);
 });
 
+// --- strona posrednia antybotu ---------------------------------------------
+
+// Prawdziwy przypadek z 24.09.2026: Amazon oddal torowi B 4 kB z przyciskiem
+// "Kontynuuj zakupy" i skonczylo sie jako mismatch. To odmowa, nie inna strona.
+t("antybot: strona posrednia Amazona i Cloudflare rozpoznana", () => {
+  truthy(detectInterstitial("<title>Amazon.pl</title><p>Kliknij poniższy przycisk, aby kontynuować zakupy</p><button>Kontynuuj zakupy</button>"));
+  truthy(detectInterstitial("<title>Cierpliwości...</title><p>Przeprowadzanie weryfikacji zabezpieczeń</p>"));
+  truthy(detectInterstitial("<title>Just a moment...</title>"));
+  // Profimarket 24.09.2026 - zapisana strona w test/fixtures.
+  truthy(detectInterstitial("<title>Proszę czekać…</title><div class=\"throbber\"></div>"));
+});
+
+t("antybot: pelna karta produktu ze slowami 'kontynuuj zakupy' to nie strona posrednia", () => {
+  const big = "<h1>KS 8100iEG</h1>" + "x".repeat(40000) + "<a>Kontynuuj zakupy</a>";
+  eq(detectInterstitial(big), null);
+  eq(detectInterstitial(JSONLD_SIMPLE), null);
+});
+
+// --- parsery na zapisanym HTML (test/fixtures) ------------------------------
+
+// Kazde zrodlo z konfiguracji ma zapisana prawdziwa strone i przechodzi przez
+// pelny scrapeSource: dopasowanie produktu, warstwy ekstrakcji, widelki. Zmiana
+// ukladu strony sklepu albo zmiana parsera wychodzi tu, a nie w produkcji.
+// Odswiezenie po zmianie strony: node src/save-fixtures.mjs (README).
+
+const FIX_CFG = JSON.parse(fs.readFileSync(path.join(process.cwd(), "config", "products.json"), "utf8"));
+const fixtureNames = fs.existsSync(FIXTURE_DIR)
+  ? fs.readdirSync(FIXTURE_DIR).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort()
+  : [];
+const configured = FIX_CFG.products.flatMap((p) => [
+  ...(p.sources || []).map((s) => ({ p, s, track: "a" })),
+  ...(p.localSources || []).map((s) => ({ p, s, track: "b" })),
+]);
+
+t("fixture: kazde zrodlo z konfiguracji ma zapisana strone", () => {
+  const missing = configured.map(({ p, s }) => fixtureName(p.id, s.shop)).filter((n) => !fixtureNames.includes(n));
+  eq(missing, [], "brak fixture'ow - uruchom node src/save-fixtures.mjs:");
+});
+
+const methodsCovered = new Set();
+for (const name of fixtureNames) {
+  await ta(`fixture: ${name}`, async () => {
+    const { meta, html } = loadFixture(name);
+    const hit = configured.find(({ p, s, track }) => p.id === meta.productId && s.shop === meta.shop && track === meta.track);
+    truthy(hit, `fixture bez zrodla w konfiguracji (${meta.productId}/${meta.shop}, tor ${meta.track}) - usun go albo przywroc zrodlo`);
+    const got = summarize(await scrapeSource(hit.p, hit.s, { fetcher: fixtureFetcher(meta, html) }));
+    eq(got, meta.expect, `strona z ${meta.capturedAt.slice(0, 10)}:`);
+    if (got.method) methodsCovered.add(got.method);
+  });
+}
+
 // --- konfiguracja -----------------------------------------------------------
 
 t("config: parsuje sie i ma komplet pol", () => {
@@ -987,6 +1039,7 @@ await ta("telegram: sendTelegram lapie wyjatek sieci", async () => {
 
 // --- podsumowanie -----------------------------------------------------------
 
+console.log(`Fixture'y: ${fixtureNames.length} stron, warstwy na prawdziwym HTML: ${[...methodsCovered].sort().join(", ") || "-"}`);
 console.log(`\n${pass} zdanych, ${fail} oblanych`);
 for (const f of failures) console.log("  X " + f);
 if (fail) process.exit(1);

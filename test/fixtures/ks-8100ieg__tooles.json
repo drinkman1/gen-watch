@@ -1,0 +1,20 @@
+{
+  "productId": "ks-8100ieg",
+  "shop": "tooles",
+  "track": "a",
+  "url": "https://tooles.pl/pl/products/agregat-generator-pradu-inwertorowy-gaz-ks-8100ieg-konner-sohnen-ks-2550",
+  "finalUrl": "https://tooles.pl/pl/products/agregat-generator-pradu-inwertorowy-gaz-ks-8100ieg-konner-sohnen-ks-2550",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:28.766Z",
+  "bytes": 166118,
+  "expect": {
+    "status": "ok",
+    "price": 6499,
+    "method": "priceattr",
+    "offers": 1
+  },
+  "issuesAtCapture": [
+    "cena z atrybutu HTML, nie z danych strukturalnych"
+  ]
+}

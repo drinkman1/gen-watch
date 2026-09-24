@@ -1,0 +1,18 @@
+{
+  "productId": "fogo-f8001isg",
+  "shop": "norwit",
+  "track": "a",
+  "url": "https://www.norwit.pl/p/agregat-pradotworczy-inwerterowy-fogo-f-8001-isg",
+  "finalUrl": "https://www.norwit.pl/p/agregat-pradotworczy-inwertorowy-fogo-f-8001-isg",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:32.678Z",
+  "bytes": 330463,
+  "expect": {
+    "status": "ok",
+    "price": 10209,
+    "method": "jsonld",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

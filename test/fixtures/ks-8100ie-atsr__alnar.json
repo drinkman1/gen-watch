@@ -1,0 +1,18 @@
+{
+  "productId": "ks-8100ie-atsr",
+  "shop": "alnar",
+  "track": "a",
+  "url": "https://alnar.pl/ks-8100ie-atsr-inwertorowy-agregat-pradotworczy-8-5kw-230v-p-30936.html",
+  "finalUrl": "https://alnar.pl/ks-8100ie-atsr-inwertorowy-agregat-pradotworczy-8-5kw-230v-p-30936.html",
+  "httpStatus": 200,
+  "via": "browser",
+  "capturedAt": "2026-09-24T11:33:25.245Z",
+  "bytes": 191086,
+  "expect": {
+    "status": "ok",
+    "price": 6289,
+    "method": "microdata",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

@@ -1,0 +1,22 @@
+{
+  "productId": "fogo-f8001isg",
+  "shop": "lewor",
+  "track": "a",
+  "url": "https://lewor.pl/fogo-f8001-isg",
+  "finalUrl": "https://lewor.pl/fogo-f8001-isg",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:34.097Z",
+  "bytes": 193338,
+  "expect": {
+    "status": "noprice",
+    "price": null,
+    "method": null,
+    "offers": 0
+  },
+  "issuesAtCapture": [
+    "zadna warstwa nie znalazla ceny",
+    "tytul: \"Agregat prądotwórczy, inwerterowy FOGO F8001ISG 7.5kW 230V dwupaliwowy (benzyna-\"",
+    "188 kB, via fixture"
+  ]
+}

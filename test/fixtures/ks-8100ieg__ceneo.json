@@ -1,0 +1,19 @@
+{
+  "productId": "ks-8100ieg",
+  "shop": "ceneo",
+  "track": "b",
+  "url": "https://www.ceneo.pl/123009746",
+  "finalUrl": "https://www.ceneo.pl/123009746",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:39:16.367Z",
+  "bytes": 284698,
+  "expect": {
+    "status": "ok",
+    "price": 6466.51,
+    "method": "jsonld",
+    "offers": 3
+  },
+  "issuesAtCapture": [],
+  "expectNote": "Poprawione recznie 24.09.2026: przy zapisie parser wierszy gubil najtansza oferte (byla tylko w JSON-LD Ceneo, lowPrice 6466.51) i zwracal 6819. Po poprawce scrapeAggregator 6466.51 jest minimum."
+}
