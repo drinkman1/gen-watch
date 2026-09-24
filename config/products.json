@@ -16,6 +16,12 @@
       "realertAfterHours": 24,
       "localStaleHours": 36
     },
+    "telegram": {
+      "changes": true,
+      "daily": true,
+      "dailyFromHour": 7,
+      "comment": "changes: wiadomosc przy kazdej zmianie najnizszej ceny modelu (tor A, z filtrem migotania sklepow). daily: raport z pierwszym przebiegiem toru A po dailyFromHour czasu warszawskiego. Alerty, awarie i cisza toru B ida zawsze."
+    },
     "localScanNote": "Test z lacza uzytkownika 26.08.2026 (Starlink, CGNAT): e-katalog oddaje 403 takze z domowego adresu - usuniete z localSources, nie ma czego probowac. Komputronik i Ceneo przechodza. Amazon oddaje pelna strone (1,3 MB, wlasciwy tytul), ale cene trzyma w span class=a-offscreen - stad jawny textPattern zamiast zgadywania."
   },
   "products": [
