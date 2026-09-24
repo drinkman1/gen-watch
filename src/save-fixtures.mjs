@@ -4,6 +4,7 @@
 //   node src/save-fixtures.mjs --track a    # sources (tor A), z Chromium
 //   node src/save-fixtures.mjs --track b    # localSources (tor B), bez przegladarki
 //   node src/save-fixtures.mjs --track b --only amazon
+//   node src/save-fixtures.mjs --track b --only olx      # odpowiedzi JSON OLX
 //   node src/save-fixtures.mjs --track a --only kupagregat,profimarket
 //
 // Tor A zapisuje GitHub Actions (tam sklepy odpowiadaja, a Chromium jest pod
@@ -49,7 +50,7 @@ export function summarize(r) {
   return {
     status: r.status,
     price: best ? best.price : null,
-    method: best ? best.method : null,
+    method: best ? best.method || null : null,
     offers: r.offers ? r.offers.length : 0,
   };
 }
@@ -66,8 +67,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   // Tor B zapisuje dokladnie tak, jak skanuje: bez przegladarki.
   if (track === "b") process.env.GEN_WATCH_NO_BROWSER = "1";
 
-  const { smartFetch, closeBrowser } = await import("./fetch.mjs");
-  const { scrapeSource } = await import("./adapters/index.mjs");
+  const { closeBrowser } = await import("./fetch.mjs");
+  const { scrapeSource, sourceRequest } = await import("./adapters/index.mjs");
   const cfg = JSON.parse(fs.readFileSync(path.join(REPO, "config", "products.json"), "utf8"));
   fs.mkdirSync(FIXTURE_DIR, { recursive: true });
 
@@ -76,7 +77,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     for (const source of (track === "a" ? product.sources : product.localSources) || []) {
       if (only && !only.includes(source.shop)) continue;
       const name = fixtureName(product.id, source.shop);
-      const res = await smartFetch(source.url, { needsBrowser: !!source.needsBrowser, waitFor: source.waitFor || null });
+      const req = sourceRequest(product, source);
+      const res = await req.fetcher(req.url, { needsBrowser: !!source.needsBrowser, waitFor: source.waitFor || null });
       // Odmowa HTTP (403, 5xx) nie testuje parsera - nie nadpisujemy nia
       // dobrego fixture'a. Strona posrednia z kodem 200 (Amazon) zostaje zapisana:
       // to na niej sprawdzamy, ze konczy sie jako "blocked".
@@ -88,14 +90,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         productId: product.id,
         shop: source.shop,
         track,
-        url: source.url,
+        url: req.url,
         finalUrl: res.finalUrl || source.url,
         httpStatus: res.status,
         via: res.via,
         capturedAt: new Date().toISOString(),
         bytes: Buffer.byteLength(res.html),
       };
-      const r = await scrapeSource(product, source, { fetcher: fixtureFetcher(meta, res.html) });
+      const r = await scrapeSource(product, source, { fetcher: fixtureFetcher(meta, res.html), meta: cfg.meta });
       meta.expect = summarize(r);
       meta.issuesAtCapture = (r.issues || []).slice(0, 3).map((x) => String(x).slice(0, 200));
       fs.writeFileSync(path.join(FIXTURE_DIR, name + ".html.gz"), zlib.gzipSync(res.html, { level: 9 }));

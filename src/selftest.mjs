@@ -10,6 +10,7 @@ import {
   extractPrice, pageMatchesProduct, fromPriceAttrs, priceBounds, guessBounds,
 } from "./extract.mjs";
 import { parseAggregatorRows, scrapeSource, detectInterstitial } from "./adapters/index.mjs";
+import { haversineKm, pickPrice, pickCoords, pickCity, pickCondition, matchesProduct, scrapeOlx } from "./adapters/olx.mjs";
 import { FIXTURE_DIR, fixtureName, fixtureFetcher, loadFixture, summarize } from "./save-fixtures.mjs";
 import { evaluate, median, allTimeLow, windowPrices, effectiveCost, fmt, DAY } from "./alerts.mjs";
 import { extractBlock, validate, marketAlerts } from "./ingest.mjs";
@@ -979,7 +980,7 @@ for (const name of fixtureNames) {
     const { meta, html } = loadFixture(name);
     const hit = configured.find(({ p, s, track }) => p.id === meta.productId && s.shop === meta.shop && track === meta.track);
     truthy(hit, `fixture bez zrodla w konfiguracji (${meta.productId}/${meta.shop}, tor ${meta.track}) - usun go albo przywroc zrodlo`);
-    const got = summarize(await scrapeSource(hit.p, hit.s, { fetcher: fixtureFetcher(meta, html) }));
+    const got = summarize(await scrapeSource(hit.p, hit.s, { fetcher: fixtureFetcher(meta, html), meta: FIX_CFG.meta }));
     eq(got, meta.expect, `strona z ${meta.capturedAt.slice(0, 10)}:`);
     if (got.method) methodsCovered.add(got.method);
   });
@@ -1087,6 +1088,122 @@ t("config: sekcja telegram", () => {
   const tg = cfg.meta.telegram;
   truthy(tg && typeof tg.daily === "boolean" && typeof tg.changes === "boolean", "meta.telegram.daily/changes");
   truthy(tg.dailyFromHour >= 5 && tg.dailyFromHour <= 12, "raport rano");
+});
+
+// --- OLX (tor B1) ------------------------------------------------------------
+
+// Filtrowanie po odleglosci robimy u siebie, z wspolrzednych oferty - nie
+// zgadujemy nazw parametrow lokalizacyjnych OLX-a, bo zla nazwa dalaby ciche,
+// niepelne wyniki zamiast bledu.
+const GRODZISK = { lat: 52.1094, lon: 20.6242 };
+
+t("olx: dystans liczony z wspolrzednych", () => {
+  eq(haversineKm(GRODZISK, GRODZISK), 0);
+  const km = haversineKm(GRODZISK, { lat: 52.0489, lon: 20.4447 });
+  truthy(km >= 10 && km <= 20, "Zyrardow ma byc 10-20 km od Grodziska, jest " + km);
+  truthy(haversineKm(GRODZISK, { lat: 54.352, lon: 18.6466 }) > 250, "Gdansk musi wypasc poza promien");
+});
+
+t("olx: cena z params, brak kwoty to null, nie zero", () => {
+  eq(pickPrice({ params: [{ key: "price", value: { value: 4200, label: "4 200 zł" } }] }), 4200);
+  eq(pickPrice({ params: [{ key: "price", value: { label: "4 200 zł" } }] }), 4200);
+  eq(pickPrice({ params: [{ key: "price", value: { label: "Zamienię" } }] }), null);
+  eq(pickPrice({ params: [{ key: "state", value: { key: "used" } }] }), null);
+  eq(pickPrice({}), null);
+});
+
+t("olx: wspolrzedne, miasto, stan", () => {
+  eq(pickCoords({ map: { lat: 52.1, lon: 20.6 } }), { lat: 52.1, lon: 20.6 });
+  eq(pickCoords({ location: { city: { name: "Żyrardów" } } }), null);
+  eq(pickCity({ location: { city: { name: "Żyrardów" }, region: { name: "Mazowieckie" } } }), "Żyrardów, Mazowieckie");
+  eq(pickCondition({ params: [{ key: "state", value: { key: "used" } }] }), "used");
+  eq(pickCondition({ params: [] }), "unknown");
+});
+
+const OLX_CFG = JSON.parse(fs.readFileSync(path.join(process.cwd(), "config", "products.json"), "utf8"));
+const P_OLX = OLX_CFG.products.find((p) => p.id === "ks-8100ieg");
+
+t("olx: pelen token to dopasowanie dokladne", () => {
+  eq(matchesProduct({ title: "Agregat Konner Sohnen KS 8100iEG" }, P_OLX), "dokladne");
+  eq(matchesProduct({ title: "Agregat", description: "model KS 8100iE G, dual fuel" }, P_OLX), "dokladne");
+});
+
+// Prawdziwy wynik z 26.08.2026: 40 z 40 ogloszen odrzuconych, bo wymagany byl
+// pelny token. Na OLX-ie sprzedajacy pisza "Konner Sohnen 8100" bez sufiksu.
+t("olx: marka plus numer rodziny to dopasowanie czesciowe (tez z umlautem)", () => {
+  eq(matchesProduct({ title: "Agregat pradotworczy Konner Sohnen 8100" }, P_OLX), "czesciowe");
+  eq(matchesProduct({ title: "Agregat Könner & Söhnen 8100 W" }, P_OLX), "czesciowe");
+  // Bez marki, ale "KS" tuz przed numerem - znacznik "ks8100", nie samo "ks".
+  eq(matchesProduct({ title: "Agregat KS 8100iE inwerter" }, P_OLX), "czesciowe");
+});
+
+// Wczesniej marka "ks" (2 litery) pasowala do dowolnego tekstu z "ks" w srodku.
+t("olx: jawnie inny wariant nie jest nawet kandydatem", () => {
+  const atsr = OLX_CFG.products.find((p) => p.id === "ks-8100ie-atsr");
+  eq(matchesProduct({ title: "Agregat Konner Sohnen KS 8100iEG gaz" }, atsr), false);
+  eq(matchesProduct({ title: "Agregat Konner Sohnen KS 8100iE ATSR" }, atsr), "dokladne");
+  eq(matchesProduct({ title: "Agregat Konner Sohnen 8100" }, atsr), "czesciowe");
+});
+
+t("olx: sam numer albo przypadkowe 'ks' nie wystarcza", () => {
+  eq(matchesProduct({ title: "Sprezarka 8100 litrow" }, P_OLX), false);
+  eq(matchesProduct({ title: "Bloksy betonowe 8100 szt" }, P_OLX), false);
+  eq(matchesProduct({ title: "Agregat Honda EU 22i" }, P_OLX), false);
+});
+
+const olxOffer = (title, price, lat = 52.0489, lon = 20.4447, extra = {}) => ({
+  title, url: "https://www.olx.pl/d/oferta/x.html",
+  params: [{ key: "price", value: { value: price } }, { key: "state", value: { key: "used" } }],
+  map: { lat, lon }, location: { city: { name: "Żyrardów" } }, ...extra,
+});
+const olxFetcherOf = (data, status = 200) => async () => ({ ok: status === 200, status, html: JSON.stringify({ data }), finalUrl: "u", via: "fixture" });
+
+await ta("olx: filtr uszkodzonych, dalekich i bez ceny; stopien dopasowania", async () => {
+  const r = await scrapeOlx(P_OLX, { query: "x" }, { meta: OLX_CFG.meta, fetcher: olxFetcherOf([
+    olxOffer("Agregat Konner Sohnen KS 8100iEG", 4200),
+    olxOffer("Konner Sohnen 8100 agregat", 3900),
+    olxOffer("Konner Sohnen KS 8100iEG uszkodzony", 1500),
+    olxOffer("Konner Sohnen KS 8100iEG", 4100, 54.352, 18.6466),
+    { ...olxOffer("Konner Sohnen KS 8100iEG", 0), params: [] },
+  ]) });
+  eq(r.status, "ok");
+  eq(r.offers.map((o) => [o.price, o.match]), [[4200, "dokladne"], [3900, "czesciowe"]]);
+  truthy(r.offers[1].note.includes("do obejrzenia"), r.offers[1].note);
+  truthy(r.issues[0].includes("uszkodzone: 1") && r.issues[0].includes("daleko: 1"), r.issues[0]);
+});
+
+await ta("olx: 429 to blocked, zepsuty JSON to error, brak meta to error", async () => {
+  eq((await scrapeOlx(P_OLX, {}, { meta: OLX_CFG.meta, fetcher: olxFetcherOf([], 429) })).status, "blocked");
+  const bad = async () => ({ ok: true, status: 200, html: "<html>", finalUrl: "u" });
+  eq((await scrapeOlx(P_OLX, {}, { meta: OLX_CFG.meta, fetcher: bad })).status, "error");
+  eq((await scrapeOlx(P_OLX, {}, { meta: {}, fetcher: olxFetcherOf([]) })).status, "error");
+});
+
+// Najwazniejsza poprawka: czesciowe dopasowanie NIE alarmuje (wczesniej tak).
+t("olx: czesciowe dopasowanie ponizej progu nie daje alertu, pelne daje", () => {
+  const prods = [{ id: "ks-8100ieg", name: "KS 8100iEG", hardThreshold: 5400 }];
+  const offers = [
+    { productId: "ks-8100ieg", site: "olx", price: 3900, match: "czesciowe" },
+    { productId: "ks-8100ieg", site: "olx", price: 4200, match: "dokladne", location: "Żyrardów" },
+  ];
+  const a = marketAlerts(offers, prods, {}, NOW, 24);
+  eq(a.map((x) => x.price), [4200]);
+});
+
+t("puls: OLX bez ogloszen to poprawny wynik, nie awaria", () => {
+  const s = buildLocalStatus({ ts: new Date(NOW).toISOString(),
+    results: [{ productId: "p", shop: "olx", status: "ok", price: null }, { productId: "p", shop: "amazon", status: "empty", price: null }] });
+  eq([s.ok, s.bad], [1, 1]);
+});
+
+t("config: kazdy model ma zapytanie OLX i sensowne tokeny marki", () => {
+  for (const p of OLX_CFG.products) {
+    const olx = (p.localSources || []).find((s) => s.kind === "olx");
+    truthy(olx && olx.query, `${p.id}: brak zapytania do OLX`);
+    truthy((p.coreTokens || []).length, `${p.id}: brak coreTokens`);
+    truthy((p.brandTokens || []).length, `${p.id}: brak brandTokens`);
+    for (const b of p.brandTokens) truthy(normToken(b).length >= 4, `${p.id}: token marki "${b}" za krotki - pasuje do przypadkowego tekstu`);
+  }
 });
 
 // --- konfiguracja -----------------------------------------------------------

@@ -1,4 +1,5 @@
 import { smartFetch } from "../fetch.mjs";
+import { scrapeOlx, olxFetch, olxUrl } from "./olx.mjs";
 import {
   extractPrice, pageMatchesProduct, parsePrice, stripTags, decodeEntities, normToken, priceBounds, guessBounds,
 } from "../extract.mjs";
@@ -242,7 +243,17 @@ function hostOf(u) {
   try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return null; }
 }
 
+// opts: { fetcher, meta } - meta (config.meta: punkt odniesienia i promien)
+// potrzebne tylko OLX-owi do filtra odleglosci.
 export async function scrapeSource(product, source, opts = {}) {
+  if (source.kind === "olx") return scrapeOlx(product, source, opts);
   if (source.kind === "aggregator") return scrapeAggregator(product, source, opts);
   return scrapeShop(product, source, opts);
+}
+
+// Adres i fetcher, ktorymi zrodlo jest pobierane naprawde - dla zapisu
+// fixture'ow, zeby zapisana odpowiedz byla dokladnie ta, ktora widzi skan.
+export function sourceRequest(product, source) {
+  if (source.kind === "olx") return { url: olxUrl(product, source), fetcher: olxFetch };
+  return { url: source.url, fetcher: smartFetch };
 }

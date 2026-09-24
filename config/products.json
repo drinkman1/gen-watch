@@ -22,7 +22,8 @@
       "dailyFromHour": 7,
       "comment": "changes: wiadomosc przy kazdej zmianie najnizszej ceny modelu (tor A, z filtrem migotania sklepow). daily: raport z pierwszym przebiegiem toru A po dailyFromHour czasu warszawskiego. Alerty, awarie i cisza toru B ida zawsze."
     },
-    "localScanNote": "Test z lacza uzytkownika 26.08.2026 (Starlink, CGNAT): e-katalog oddaje 403 takze z domowego adresu - usuniete z localSources, nie ma czego probowac. Komputronik i Ceneo przechodza. Amazon oddaje pelna strone (1,3 MB, wlasciwy tytul), ale cene trzyma w span class=a-offscreen - stad jawny textPattern zamiast zgadywania."
+    "localScanNote": "Test z lacza uzytkownika 26.08.2026 (Starlink, CGNAT): e-katalog oddaje 403 takze z domowego adresu - usuniete z localSources, nie ma czego probowac. Komputronik i Ceneo przechodza. Amazon oddaje pelna strone (1,3 MB, wlasciwy tytul), ale cene trzyma w span class=a-offscreen - stad jawny textPattern zamiast zgadywania.",
+    "olxNote": "OLX sprawdzany automatycznie w torze B1 (skan lokalny, 2x dziennie, 5 zapytan). Allegro i Allegro Lokalnie zostaja w torze B2 (Chrome, recznie), tam tez mozna recznie dorzucic ogloszenia OLX przez Issue GEN_Scan."
   },
   "products": [
     {
@@ -73,7 +74,23 @@
           "shop": "komputronik",
           "kind": "shop",
           "url": "https://www.komputronik.pl/product/958365/agregat-pradotworczy-konner-sohnen-ks-8100ie-atsr.html"
+        },
+        {
+          "shop": "olx",
+          "kind": "olx",
+          "query": "agregat KS 8100iE ATSR",
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
         }
+      ],
+      "coreTokens": [
+        "8100"
+      ],
+      "brandTokens": [
+        "konner",
+        "knner",
+        "sohnen",
+        "shnen",
+        "ks8100"
       ]
     },
     {
@@ -127,7 +144,23 @@
           "discountPct": 4,
           "textPattern": "corePrice[\\s\\S]{0,3000}?class=\"a-offscreen\">\\s*([0-9][0-9\\s\\u00a0.,]*)\\s*z",
           "patternNote": "Wzorzec MUSI byc zakotwiczony w bloku corePrice. Pierwsza wersja szukala samego a-offscreen i 26.08.2026 zlapala 3 899 zl z karuzeli 'podobne produkty' przy modelu, ktory wszedzie kosztuje 5 700-6 800 - i wywolala falszywy alert. Amazon wstawia a-offscreen takze w reklamach, zestawach 'kup razem' i polecajkach."
+        },
+        {
+          "shop": "olx",
+          "kind": "olx",
+          "query": "agregat KS 8100iEG",
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
         }
+      ],
+      "coreTokens": [
+        "8100"
+      ],
+      "brandTokens": [
+        "konner",
+        "knner",
+        "sohnen",
+        "shnen",
+        "ks8100"
       ]
     },
     {
@@ -154,6 +187,24 @@
           "url": "https://konner-sohnen.pl/en/products/inverter-generator-ks-9500ie-s-atsr",
           "shipping": 0
         }
+      ],
+      "localSources": [
+        {
+          "shop": "olx",
+          "kind": "olx",
+          "query": "agregat KS 9500iE",
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
+        }
+      ],
+      "coreTokens": [
+        "9500"
+      ],
+      "brandTokens": [
+        "konner",
+        "knner",
+        "sohnen",
+        "shnen",
+        "ks9500"
       ]
     },
     {
@@ -198,6 +249,20 @@
           "kind": "shop",
           "url": "https://mmasz.pl/agregat-pradotworczy-inwerterowy-fogo-f8001isg-75kw-p-3348.html"
         }
+      ],
+      "localSources": [
+        {
+          "shop": "olx",
+          "kind": "olx",
+          "query": "Fogo F 8001 iSG agregat",
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
+        }
+      ],
+      "coreTokens": [
+        "8001"
+      ],
+      "brandTokens": [
+        "fogo"
       ]
     },
     {
@@ -245,6 +310,20 @@
           "kind": "shop",
           "url": "https://sklep.nowaktech.pl/strona-glowna/2280-agregat-pradotworczy-fogo-f-12000-isg-inwerter-benzyna-lpg"
         }
+      ],
+      "localSources": [
+        {
+          "shop": "olx",
+          "kind": "olx",
+          "query": "Fogo F 12000 iSG agregat",
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
+        }
+      ],
+      "coreTokens": [
+        "12000"
+      ],
+      "brandTokens": [
+        "fogo"
       ]
     }
   ]

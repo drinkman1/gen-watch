@@ -1,4 +1,4 @@
-# Tor B2 — skan przez przeglądarkę (Allegro, OLX, Allegro Lokalnie)
+# Tor B2 — skan przez przeglądarkę (Allegro, Allegro Lokalnie)
 
 Instrukcja dla sesji Cowork uruchamianej harmonogramem. Ten plik jest kontraktem:
 sesja czyta go i wykonuje krok po kroku, zamiast improwizować.
@@ -31,7 +31,7 @@ Dla każdego z pięciu modeli:
 | Serwis | Czego szukać | Dlaczego tutaj |
 |---|---|---|
 | Allegro | po EAN dla trzech modeli K&S; po nazwie dla dwóch Fogo | blokuje IP centrów danych |
-| OLX | po nazwie modelu, promień **100 km od Grodziska Mazowieckiego** | jw. |
+| OLX | tylko gdy chcesz obejrzeć ręcznie: automatycznie sprawdza go skan lokalny (tor B1, README „OLX w torze B1”) | — |
 | Allegro Lokalnie | jak OLX | jw. |
 
 **Czego tu już nie ma:** e-katalog, Ceneo, Amazon i Komputronik. Po pierwszym przebiegu

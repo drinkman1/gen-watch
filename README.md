@@ -193,10 +193,10 @@ e-katalogu, bo był zaplanowany jako główna warstwa zwiadu.
 
 ## Czego ten bot NIE robi
 
-- **Sam nie chodzi na Allegro, OLX ani Allegro Lokalnie.** Te serwisy blokują adresy
-  IP centrów danych, a runnery GitHuba stoją w Azure. Obsługuje je osobny tor przez
-  przeglądarkę na maszynie użytkownika, a wyniki wracają tu przez Issue —
-  patrz `BROWSER-SCAN.md`.
+- **Nie chodzi sam na Allegro ani Allegro Lokalnie.** Te serwisy blokują adresy IP
+  centrów danych, a runnery GitHuba stoją w Azure. Obsługuje je tor B2 przez przeglądarkę
+  na maszynie użytkownika, a wyniki wracają tu przez Issue (patrz `BROWSER-SCAN.md`).
+  OLX sprawdza automatycznie skan lokalny (tor B1), opis niżej.
 - **Nie czyta specyfikacji ze sklepów.** Sklepowe parametry rozjeżdżają się z
   danymi producenta. Ze sklepów bierzemy wyłącznie cenę i dostępność; specyfikacja
   pochodzi z `konner-sohnen.pl` i `fogo.pl`, a link do niej jest przy każdym modelu.
@@ -208,7 +208,7 @@ e-katalogu, bo był zaplanowany jako główna warstwa zwiadu.
 | | Tor A — sklepy | Tor B1 — skan lokalny | Tor B2 — rynek wtórny |
 |---|---|---|---|
 | Gdzie działa | GitHub Actions, co 3 h | skrypt Node na Windowsie | Chrome na laptopie, na żądanie |
-| Co obejmuje | sklepy bezpośrednio | Ceneo, Amazon, Komputronik | Allegro, OLX, Allegro Lokalnie |
+| Co obejmuje | sklepy bezpośrednio | Ceneo, Amazon, Komputronik, **OLX** | Allegro, Allegro Lokalnie (OLX ręcznie, gdy trzeba) |
 | Potrzebuje laptopa | nie | tak (włączonego) | tak (z sesją Claude) |
 | Potrzebuje przeglądarki | nie | **nie** | tak |
 | Zapis do repo | bezpośrednio | bezpośrednio, poświadczeniami gita | przez Issue `GEN_Scan` |
@@ -222,13 +222,38 @@ mógł działać bez nadzoru. Okazało się przy tym, że **e-katalog i Ceneo ni
 przeglądarki — potrzebują adresu IP z domowego łącza.** Stąd B1: te same parsery,
 uruchamiane lokalnie, bez modelu i bez przeglądarki.
 
-Allegro i OLX zostają w B2 na żądanie, bo tam i tak potrzebna jest ocena człowieka —
+Allegro zostaje w B2 na żądanie, bo tam i tak potrzebna jest ocena człowieka:
 motogodziny, rok, stan. Skrypt tego nie rozstrzygnie.
+
+### OLX w torze B1
+
+Skan lokalny pyta OLX przez `https://www.olx.pl/api/v1/offers/`, jednym zapytaniem na
+model (5 zapytań na przebieg, 10 dziennie). Robots.txt OLX blokuje `/api/`, ale jawnie
+dopuszcza ten jeden endpoint (`Allow: /api/v1/offers/`). Bot przedstawia się własnym
+User-Agentem z linkiem do repo, czeka 1,5 s między zapytaniami i ma limit 20 s na
+zapytanie. Po odpowiedzi 429 albo 503 odpuszcza resztę zapytań w tym przebiegu. Z wyników
+odrzuca:
+- ogłoszenia „uszkodzony”, „na części”, „nie odpala”;
+- ogłoszenia bez ceny;
+- ogłoszenia dalej niż `meta.usedRadiusKm` (100 km) od Grodziska. Odległość liczy ze
+  współrzędnych ogłoszenia.
+
+Dopasowanie ogłoszenia do modelu jest dwustopniowe:
+
+- **pełne**: w tytule albo opisie jest pełna nazwa modelu (np. „KS 8100iEG”). Takie
+  ogłoszenie poniżej progu daje **alert** (mail przez Issue, Telegram), jak każda oferta
+  toru B;
+- **częściowe**: jest marka i numer rodziny bez wariantu (np. „Konner Sohnen 8100”, „KS
+  8100iE”). Trafia na dashboard i do raportu dziennego jako „do obejrzenia — wariant
+  niepewny” i **nigdy nie alarmuje**. KS 8100iE ATSR i KS 8100iEG to różne urządzenia, a bot
+  nie zgaduje. Ogłoszenie jawnie o innym wariancie odpada całkiem.
+
+Zero ogłoszeń to poprawny wynik („nikt nie sprzedaje”) i nie liczy się jako awaria toru B.
 
 ## Tor B na Windows — uruchomienie
 
-Tor B1 to `skan-lokalny.bat` uruchamiany przez Harmonogram zadań. Sprawdza Ceneo, Amazon
-i Komputronik z domowego łącza i zapisuje wynik na gałęzi `data`. Całość, od zera do
+Tor B1 to `skan-lokalny.bat` uruchamiany przez Harmonogram zadań. Sprawdza Ceneo, Amazon,
+Komputronik i OLX z domowego łącza i zapisuje wynik na gałęzi `data`. Całość, od zera do
 działającego zadania, to trzy kroki.
 
 ### Wymagania (raz)

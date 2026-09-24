@@ -24,7 +24,9 @@ export const DEFAULT_STALE_HOURS = 36;
 // biezacy przebieg nic nie zebral - inaczej jedna nieudana proba kasowalaby
 // informacje, kiedy tor B ostatnio dzialal.
 export function buildLocalStatus({ ts, code = null, results = [], prev = null, alerts = [] }) {
-  const ok = results.filter((r) => r.status === "ok" && r.price != null).length;
+  // "ok" = zrodlo odpowiedzialo poprawnie. Sklep bez ceny dostaje w skanie
+  // lokalnym status "empty", a OLX bez ogloszen to poprawne "nikt nie sprzedaje".
+  const ok = results.filter((r) => r.status === "ok").length;
   return {
     ts,
     lastOkAt: ok > 0 ? ts : (prev && prev.lastOkAt) || null,

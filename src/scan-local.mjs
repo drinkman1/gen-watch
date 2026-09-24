@@ -68,6 +68,13 @@ function prepareWorkdir() {
   }
 }
 
+// Sklep w alercie: dla "inne" (Amazon, Komputronik) prawdziwa nazwa siedzi
+// w title; dla OLX title to tytul ogloszenia, wiec pokazujemy serwis i miasto.
+function alertShop(a) {
+  if (a.shop === "inne") return a.title || a.shop;
+  return a.location ? `${a.shop}, ${a.location}` : a.shop;
+}
+
 // Nazwa sklepu -> kategoria serwisu w danych rynkowych.
 function siteOf(shop) {
   const s = String(shop).toLowerCase();
@@ -105,13 +112,47 @@ const report = [];
 const results = [];
 let ok = 0, bad = 0;
 
+// OLX: 429/503 znaczy "wystarczy" - pozostale zapytania w tym przebiegu
+// odpuszczamy, zamiast dobijac sie kolejnymi modelami.
+let olxStopped = false;
+
 for (const product of cfg.products) {
   for (const source of product.localSources || []) {
+    if (source.kind === "olx" && olxStopped) {
+      bad++;
+      results.push({ productId: product.id, shop: source.shop, status: "skipped", price: null,
+        issue: "OLX poprosil o spokoj wczesniej w tym przebiegu" });
+      report.push(`  --   ${product.id} / olx: pominiete (OLX poprosil o spokoj)`);
+      continue;
+    }
     let r;
     try {
-      r = await scrapeSource(product, source);
+      r = await scrapeSource(product, source, { meta: cfg.meta });
     } catch (e) {
       r = { status: "error", offers: [], issues: ["wyjatek: " + String(e && e.message || e)] };
+    }
+
+    if (source.kind === "olx") {
+      // OLX oddaje gotowe wpisy rynkowe (cena, stan, lokalizacja, dystans,
+      // stopien dopasowania). Zero ogloszen to POPRAWNY wynik - nikt akurat
+      // nie sprzedaje - wiec w pulsie liczy sie jako ok, nie jako awaria.
+      if (r.status === "blocked") olxStopped = true;
+      const why = (r.issues || []).join(" · ");
+      if (r.status === "ok") {
+        ok++;
+        for (const o of r.offers) offers.push({ ...o, seenAt: started });
+        const exact = r.offers.filter((o) => o.match === "dokladne");
+        results.push({ productId: product.id, shop: source.shop, status: "ok",
+          price: exact.length ? Math.min(...exact.map((o) => o.price)) : null,
+          issue: `${r.offers.length} ogloszen w promieniu, ${exact.length} z pelnym dopasowaniem` });
+        const lines = r.offers.map((o) => `${o.price} zl / ${o.condition} / ${o.location || "?"} ~${o.distanceKm} km${o.match === "czesciowe" ? " / do obejrzenia" : ""}`);
+        report.push(`  OK   ${product.id} / olx: ${r.offers.length} ogloszen${lines.length ? "\n         " + lines.join("\n         ") : ""}${why ? "\n         " + why : ""}`);
+      } else {
+        bad++;
+        results.push({ productId: product.id, shop: source.shop, status: r.status, price: null, issue: why || null });
+        report.push(`  --   ${product.id} / olx: ${r.status}${why ? " — " + why : ""}`);
+      }
+      continue;
     }
 
     if (r.status === "ok" && r.offers.length) {
@@ -149,7 +190,7 @@ await closeBrowser();
 
 console.log(`\nSkan lokalny ${started}`);
 console.log(report.join("\n"));
-console.log(`\nZrodel z cena: ${ok}, bez ceny: ${bad}, ofert lacznie: ${offers.length}`);
+console.log(`\nZrodla ok: ${ok}, z bledem: ${bad}, ofert lacznie: ${offers.length}`);
 
 if (!offers.length) {
   console.log("\nNic nie zebrano. Jesli w powodach widzisz \"Cierpliwosci\" albo");
@@ -172,7 +213,7 @@ const state = { ...state0 };
 // Komputronika) - prawdziwa nazwa sklepu siedzi w title wpisu rynkowego.
 const alerts = marketAlerts(offers, cfg.products, state, Date.now(), rules.realertAfterHours)
   .map((a) => pendingAlert({
-    productId: a.productId, name: a.name, site: a.shop, shop: a.title || a.shop,
+    productId: a.productId, name: a.name, site: a.shop, shop: alertShop(a),
     price: a.price, url: a.url, threshold: a.threshold,
     discountPct: discountOf.get(`${a.productId}|${a.price}`), seenAt: started,
   }));
