@@ -225,6 +225,13 @@ uruchamiane lokalnie, bez modelu i bez przeglądarki.
 Allegro i OLX zostają w B2 na żądanie, bo tam i tak potrzebna jest ocena człowieka —
 motogodziny, rok, stan. Skrypt tego nie rozstrzygnie.
 
+**Automatyczny OLX sprawdzony i odrzucony (24–25.09.2026).** Robots.txt OLX dopuszcza
+`/api/v1/offers/`, ale samo API odpowiada 403 na bota z własnym User-Agentem. Tak było przy
+wszystkich 5 zapytaniach z łącza domowego, dwa dni z rzędu. Odmowy nie obchodzimy (bez
+udawania przeglądarki). Gotowy, poprawiony adapter leży na gałęzi `olx-lokalny`, gdyby
+OLX kiedyś wpuścił takiego bota. Wystarczy wtedy `node src/save-fixtures.mjs --track b --only olx`
+z tamtej gałęzi, żeby sprawdzić, czy odpowiada.
+
 ## Tor B na Windows — uruchomienie
 
 Tor B1 to `skan-lokalny.bat` uruchamiany przez Harmonogram zadań. Sprawdza Ceneo, Amazon

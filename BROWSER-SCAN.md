@@ -31,7 +31,7 @@ Dla każdego z pięciu modeli:
 | Serwis | Czego szukać | Dlaczego tutaj |
 |---|---|---|
 | Allegro | po EAN dla trzech modeli K&S; po nazwie dla dwóch Fogo | blokuje IP centrów danych |
-| OLX | po nazwie modelu, promień **100 km od Grodziska Mazowieckiego** | jw. |
+| OLX | po nazwie modelu, promień **100 km od Grodziska Mazowieckiego** | jw.; API odrzuca bota (403, sprawdzone 24–25.09.2026), więc tylko ręcznie |
 | Allegro Lokalnie | jak OLX | jw. |
 
 **Czego tu już nie ma:** e-katalog, Ceneo, Amazon i Komputronik. Po pierwszym przebiegu
