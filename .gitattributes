@@ -1,2 +1,6 @@
 * text=auto eol=lf
+# cmd.exe zle parsuje pliki .bat z koncami linii LF (etykiety, bloki if/for),
+# a PowerShell 5.1 woli CRLF - te dwa typy zawsze z CRLF.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
 docs/data/** linguist-generated=true

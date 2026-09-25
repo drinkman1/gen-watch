@@ -1,0 +1,25 @@
+name: testy
+
+# Testy offline na kazdym PR. Wczesniej chodzily tylko w krokach "Testy
+# offline" skanu i ingestu - zepsuty test po merge'u zatrzymywal caly tor A.
+# Bez sieci i bez npm install: selftest nie laduje Playwrighta.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Testy offline (z fixture'ami)
+        run: node src/selftest.mjs

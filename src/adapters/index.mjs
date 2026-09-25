@@ -1,4 +1,5 @@
 import { smartFetch } from "../fetch.mjs";
+import { scrapeOlx, olxFetch, olxUrl } from "./olx.mjs";
 import {
   extractPrice, pageMatchesProduct, parsePrice, stripTags, decodeEntities, normToken, priceBounds, guessBounds,
 } from "../extract.mjs";
@@ -27,8 +28,31 @@ function diagnose(html, res) {
   return out;
 }
 
-export async function scrapeShop(product, source) {
-  const res = await smartFetch(source.url, {
+// Strona posrednia ochrony antybotowej: Amazon ("Kliknij ponizszy przycisk,
+// aby kontynuowac zakupy", 4 kB zamiast 1,3 MB) i Cloudflare ("Cierpliwosci...
+// Przeprowadzanie weryfikacji zabezpieczen"). To nie jest "inna strona"
+// (mismatch), tylko odmowa - i tak ja raportujemy. Obchodzic jej nie bedziemy.
+// Limit dlugosci, bo prawdziwa karta produktu tez potrafi zawierac slowa
+// "kontynuuj zakupy" (np. w koszyku), a strona posrednia jest zawsze mala.
+const INTERSTITIAL = [
+  [/kontynuowa[cć] zakup|continue shopping/i, "Amazon: przycisk 'Kontynuuj zakupy'"],
+  [/cierpliwo[sś]ci|weryfikacj\w* zabezpiecze|just a moment|checking your browser/i, "Cloudflare: weryfikacja zabezpieczen"],
+  // Profimarket 24.09.2026: 12 kB, tytul "Prosze czekac...", spinner i skrypt.
+  [/prosz[eę] czeka[cć]/i, "strona 'Prosze czekac' ze skryptem weryfikujacym"],
+];
+
+export function detectInterstitial(html) {
+  const h = String(html || "");
+  if (h.length > 30000) return null;
+  const text = stripTags(h).slice(0, 2000);
+  for (const [re, label] of INTERSTITIAL) if (re.test(text)) return label;
+  return null;
+}
+
+// `fetcher` wstrzykiwany w testach na zapisanym HTML (test/fixtures);
+// w produkcji zawsze smartFetch.
+export async function scrapeShop(product, source, { fetcher = smartFetch } = {}) {
+  const res = await fetcher(source.url, {
     needsBrowser: !!source.needsBrowser,
     waitFor: source.waitFor || null,
   });
@@ -39,6 +63,9 @@ export async function scrapeShop(product, source) {
       `HTTP ${res.status || "-"}${res.error ? " (" + res.error + ")" : ""}`,
     ]);
   }
+
+  const wall = detectInterstitial(res.html);
+  if (wall) return fail("blocked", [`strona posrednia antybotu (${wall})`, ...diagnose(res.html, res)]);
 
   const match = pageMatchesProduct(res.html, product);
   if (!match.ok) {
@@ -98,13 +125,16 @@ export async function scrapeShop(product, source) {
 // najpierw probuje wyciagnac pary sklep+cena, a jak sie nie uda, cofa sie do
 // samej ceny minimalnej z JSON-LD. Druga warstwa wystarcza do alertu - tracimy
 // tylko informacje, KTORY sklep jest najtanszy.
-export async function scrapeAggregator(product, source) {
-  const res = await smartFetch(source.url, { needsBrowser: !!source.needsBrowser });
+export async function scrapeAggregator(product, source, { fetcher = smartFetch } = {}) {
+  const res = await fetcher(source.url, { needsBrowser: !!source.needsBrowser });
 
   if (!res.ok) {
     const blocked = [401, 403, 406, 429].includes(res.status);
     return fail(blocked ? "blocked" : "error", [`HTTP ${res.status || "-"}`]);
   }
+
+  const wall = detectInterstitial(res.html);
+  if (wall) return fail("blocked", [`strona posrednia antybotu (${wall})`, ...diagnose(res.html, res)]);
 
   const match = pageMatchesProduct(res.html, product);
   if (!match.ok) {
@@ -112,14 +142,10 @@ export async function scrapeAggregator(product, source) {
   }
 
   const offers = parseAggregatorRows(res.html, source.shop);
-  if (offers.length) return ok(offers, res.escalatedFrom ? ["poszlo przez Chromium"] : []);
-
   const expect = [product.ean, ...(product.matchTokens || [])].filter(Boolean);
   const { min, max } = priceBounds(product.baseline);
   const got = extractPrice(res.html, { expectTokens: expect, min, max });
-  if (got.price == null) return fail("noprice", ["ani wierszy sklepow, ani ceny zbiorczej", got.reason]);
-
-  return ok([{
+  const summary = () => ({
     shop: source.shop,
     price: got.price,
     currency: got.currency || "PLN",
@@ -128,8 +154,25 @@ export async function scrapeAggregator(product, source) {
     method: got.method,
     shipping: null,
     discountPct: 0,
-    note: "cena zbiorcza z porownywarki - sklep nierozpoznany",
-  }], ["nie udalo sie rozbic na sklepy, zostala cena minimalna"]);
+    note: "najnizsza cena wg danych strukturalnych porownywarki - sklep nierozpoznany",
+  });
+
+  if (offers.length) {
+    // Wiersze sklepow bywaja niepelne. 24.09.2026 Ceneo mialo 4 oferty, w
+    // atrybutach data-shop/data-price byly 3 (6 819, 6 819, 6 898,75), a
+    // najtansza (6 466,51) tylko w JSON-LD porownywarki. Bez tego bot bral
+    // zawyzone minimum - stad dawna notatka "Ceneo bywa zawyzone".
+    const rowMin = Math.min(...offers.map((o) => o.price));
+    const issues = res.escalatedFrom ? ["poszlo przez Chromium"] : [];
+    if (got.price != null && got.price < rowMin) {
+      offers.push(summary());
+      issues.push(`najtansza oferta (${got.price}) tylko w danych strukturalnych, bez nazwy sklepu`);
+    }
+    return ok(offers, issues);
+  }
+
+  if (got.price == null) return fail("noprice", ["ani wierszy sklepow, ani ceny zbiorczej", got.reason]);
+  return ok([summary()], ["nie udalo sie rozbic na sklepy, zostala cena minimalna"]);
 }
 
 // Szuka fragmentow, w ktorych blisko siebie stoi nazwa sklepu i kwota w zl.
@@ -200,7 +243,17 @@ function hostOf(u) {
   try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return null; }
 }
 
-export async function scrapeSource(product, source) {
-  if (source.kind === "aggregator") return scrapeAggregator(product, source);
-  return scrapeShop(product, source);
+// opts: { fetcher, meta } - meta (config.meta: punkt odniesienia i promien)
+// potrzebne tylko OLX-owi do filtra odleglosci.
+export async function scrapeSource(product, source, opts = {}) {
+  if (source.kind === "olx") return scrapeOlx(product, source, opts);
+  if (source.kind === "aggregator") return scrapeAggregator(product, source, opts);
+  return scrapeShop(product, source, opts);
+}
+
+// Adres i fetcher, ktorymi zrodlo jest pobierane naprawde - dla zapisu
+// fixture'ow, zeby zapisana odpowiedz byla dokladnie ta, ktora widzi skan.
+export function sourceRequest(product, source) {
+  if (source.kind === "olx") return { url: olxUrl(product, source), fetcher: olxFetch };
+  return { url: source.url, fetcher: smartFetch };
 }

@@ -24,6 +24,33 @@ import { parsePrice, normToken } from "../extract.mjs";
 const UA = "gen-watch/1.0 (osobisty monitoring cen agregatow; +https://github.com/drinkman1/gen-watch)";
 const BASE = "https://www.olx.pl/api/v1/offers/";
 
+export function olxUrl(product, source) {
+  const query = source.query || product.name;
+  return `${BASE}?offset=0&limit=40&query=${encodeURIComponent(query)}`;
+}
+
+// Domyslny fetcher: wlasny User-Agent, JSON, limit czasu 20 s (bez niego
+// zawieszone zapytanie trzymalo caly skan lokalny) i odstep 1,5 s PO kazdym
+// zapytaniu - piec modeli to ok. 8 s. Ksztalt odpowiedzi jak smartFetch, zeby
+// ten sam mechanizm fixture'ow (test/fixtures) dzialal i tutaj.
+export async function olxFetch(url, { timeoutMs = 20000, spacingMs = 1500 } = {}) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, "Accept": "application/json", "Accept-Language": "pl-PL,pl;q=0.9" },
+      signal: ac.signal,
+    });
+    const html = await res.text();
+    return { ok: res.ok, status: res.status, html, finalUrl: res.url || url, via: "fetch" };
+  } catch (e) {
+    return { ok: false, status: 0, html: "", finalUrl: url, via: "fetch", error: String(e && e.message || e) };
+  } finally {
+    clearTimeout(t);
+    await sleep(spacingMs);
+  }
+}
+
 // Tytuly, ktore dyskwalifikuja oferte niezaleznie od ceny. Wyszukiwarka OLX
 // tego nie odsiewa, a agregat "na czesci" za pol ceny nie jest okazja.
 const REJECT = /uszkodzon|na cz[eę][sś]ci|niesprawn|nie odpala|nie dziala|nie dzia[lł]a|do naprawy|spalon|zatart/i;
@@ -44,7 +71,7 @@ export function pickPrice(offer) {
   for (const p of params) {
     if (!p || (p.key !== "price" && p.type !== "price")) continue;
     const v = p.value || {};
-    const cand = [v.value, v.label, v.arranged === true ? null : null];
+    const cand = [v.value, v.label];
     for (const c of cand) {
       const n = parsePrice(c);
       if (n != null && n > 0) return n;
@@ -110,25 +137,21 @@ export function matchesProduct(offer, product) {
   const core = product.coreTokens || [];
   const brand = product.brandTokens || [];
   if (!core.length || !brand.length) return false;
+  // Ogloszenie jawnie o innym wariancie (np. "KS 8100iEG" przy szukaniu
+  // KS 8100iE ATSR) nie jest nawet kandydatem do obejrzenia.
+  if ((product.rejectTokens || []).some((r) => hay.includes(normToken(r)))) return false;
   const hasCore = core.some((c) => hay.includes(normToken(c)));
   const hasBrand = brand.some((b) => hay.includes(normToken(b)));
   return hasCore && hasBrand ? "czesciowe" : false;
 }
 
-export async function scrapeOlx(product, source, meta) {
-  const query = source.query || product.name;
-  const url = `${BASE}?offset=0&limit=40&query=${encodeURIComponent(query)}`;
+export async function scrapeOlx(product, source, { fetcher = olxFetch, meta = {} } = {}) {
+  const res = await fetcher(olxUrl(product, source), {});
+  const body = res.html || "";
 
-  let res, body;
-  try {
-    res = await fetch(url, {
-      headers: { "User-Agent": UA, "Accept": "application/json", "Accept-Language": "pl-PL,pl;q=0.9" },
-    });
-    body = await res.text();
-  } catch (e) {
-    return { status: "error", offers: [], issues: ["blad sieci: " + String(e && e.message || e)] };
+  if (res.status === 0) {
+    return { status: "error", offers: [], issues: ["blad sieci: " + (res.error || "brak odpowiedzi")] };
   }
-
   if (res.status === 429 || res.status === 503) {
     return { status: "blocked", offers: [], issues: [`HTTP ${res.status} - OLX prosi o spokoj, przerywam`] };
   }
@@ -152,6 +175,9 @@ export async function scrapeOlx(product, source, meta) {
 
   const origin = meta.origin;
   const maxKm = meta.usedRadiusKm;
+  if (!origin || !Number.isFinite(maxKm)) {
+    return { status: "error", offers: [], issues: ["brak meta.origin / meta.usedRadiusKm w konfiguracji"] };
+  }
   const out = [];
   const skipped = { model: 0, uszkodzone: 0, daleko: 0, bezCeny: 0, bezWspolrzednych: 0 };
 
@@ -183,7 +209,9 @@ export async function scrapeOlx(product, source, meta) {
       location: pickCity(o),
       distanceKm: km,
       match,
-      note: match === "czesciowe" ? "dopasowanie czesciowe - sprawdz wariant modelu" : null,
+      // Czesciowe dopasowanie nigdy nie alarmuje (marketAlerts je pomija) -
+      // trafia tylko na dashboard i do raportu jako kandydat do obejrzenia.
+      note: match === "czesciowe" ? "do obejrzenia - wariant niepewny" : null,
     });
   }
 
@@ -198,8 +226,6 @@ export async function scrapeOlx(product, source, meta) {
     issues.push("przyklady odrzuconych tytulow: " + sampleTitles.map((t) => `"${t}"`).join(", "));
   }
 
-  // Odstep miedzy zapytaniami. Piec modeli x 1,5 s to osiem sekund na przebieg.
-  await sleep(1500);
 
   return { status: "ok", offers: out, issues };
 }

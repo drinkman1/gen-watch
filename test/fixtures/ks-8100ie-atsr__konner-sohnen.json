@@ -1,0 +1,18 @@
+{
+  "productId": "ks-8100ie-atsr",
+  "shop": "konner-sohnen",
+  "track": "a",
+  "url": "https://konner-sohnen.pl/en/products/inverter-generators-ks-8100ie-atsr",
+  "finalUrl": "https://konner-sohnen.pl/en/products/inverter-generators-ks-8100ie-atsr",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:32:41.249Z",
+  "bytes": 471070,
+  "expect": {
+    "status": "ok",
+    "price": 6289,
+    "method": "jsonld",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

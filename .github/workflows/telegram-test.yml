@@ -1,0 +1,35 @@
+name: telegram test
+
+# Przycisk "Run workflow": wysyla testowa wiadomosc z aktualnymi cenami.
+# Sprawdza sekrety TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID i sam kanal.
+# Niczego nie zapisuje: ani galezi data, ani Pages. Czerwony przebieg =
+# brak sekretow albo odmowa Telegrama (tresc bledu w logu).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Ceny z ostatniego skanu (tylko do tresci wiadomosci)
+        run: |
+          if git fetch --depth 1 origin data 2>/dev/null; then
+            git checkout FETCH_HEAD -- docs/data/latest.json 2>/dev/null || echo "Brak latest.json."
+          fi
+
+      - name: Wiadomosc testowa
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node src/notify-telegram.mjs --test

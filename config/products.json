@@ -13,9 +13,17 @@
       "medianWindowDays": 30,
       "medianDropPct": 7,
       "minSamplesForMedian": 8,
-      "realertAfterHours": 24
+      "realertAfterHours": 24,
+      "localStaleHours": 36
     },
-    "localScanNote": "Test z lacza uzytkownika 26.08.2026 (Starlink, CGNAT): e-katalog oddaje 403 takze z domowego adresu - usuniete z localSources, nie ma czego probowac. Komputronik i Ceneo przechodza. Amazon oddaje pelna strone (1,3 MB, wlasciwy tytul), ale cene trzyma w span class=a-offscreen - stad jawny textPattern zamiast zgadywania."
+    "telegram": {
+      "changes": true,
+      "daily": true,
+      "dailyFromHour": 7,
+      "comment": "changes: wiadomosc przy kazdej zmianie najnizszej ceny modelu (tor A, z filtrem migotania sklepow). daily: raport z pierwszym przebiegiem toru A po dailyFromHour czasu warszawskiego. Alerty, awarie i cisza toru B ida zawsze."
+    },
+    "localScanNote": "Test z lacza uzytkownika 26.08.2026 (Starlink, CGNAT): e-katalog oddaje 403 takze z domowego adresu - usuniete z localSources, nie ma czego probowac. Komputronik i Ceneo przechodza. Amazon oddaje pelna strone (1,3 MB, wlasciwy tytul), ale cene trzyma w span class=a-offscreen - stad jawny textPattern zamiast zgadywania.",
+    "olxNote": "OLX sprawdzany automatycznie w torze B1 (skan lokalny, 2x dziennie, 5 zapytan). Allegro i Allegro Lokalnie zostaja w torze B2 (Chrome, recznie), tam tez mozna recznie dorzucic ogloszenia OLX przez Issue GEN_Scan."
   },
   "products": [
     {
@@ -71,7 +79,7 @@
           "shop": "olx",
           "kind": "olx",
           "query": "agregat KS 8100iE ATSR",
-          "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
         }
       ],
       "coreTokens": [
@@ -79,10 +87,10 @@
       ],
       "brandTokens": [
         "konner",
+        "knner",
         "sohnen",
-        "sōhnen",
-        "k&s",
-        "ks"
+        "shnen",
+        "ks8100"
       ]
     },
     {
@@ -127,7 +135,7 @@
           "kind": "aggregator",
           "url": "https://www.ceneo.pl/123009746",
           "bestEffort": true,
-          "note": "Oddaje cene, ale numeryczne id sklepow uniemozliwiaja wskazanie sprzedawcy, a wartosc bywa zawyzona (6 819 zl przy 5 688 w Morele). Traktowac jako sygnal, nie zrodlo prawdy."
+          "note": "Oddaje cene, ale numeryczne id sklepow uniemozliwiaja wskazanie sprzedawcy. Dawne \"zawyzone\" 6 819 zl to byl blad parsera: najtansza oferta jest tylko w JSON-LD Ceneo (24.09.2026: 6 466,51), a wiersze sklepow jej nie maja - naprawione w scrapeAggregator, pilnuje tego test na test/fixtures/ks-8100ieg__ceneo."
         },
         {
           "shop": "amazon",
@@ -141,7 +149,7 @@
           "shop": "olx",
           "kind": "olx",
           "query": "agregat KS 8100iEG",
-          "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
         }
       ],
       "coreTokens": [
@@ -149,10 +157,10 @@
       ],
       "brandTokens": [
         "konner",
+        "knner",
         "sohnen",
-        "sōhnen",
-        "k&s",
-        "ks"
+        "shnen",
+        "ks8100"
       ]
     },
     {
@@ -185,7 +193,7 @@
           "shop": "olx",
           "kind": "olx",
           "query": "agregat KS 9500iE",
-          "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
         }
       ],
       "coreTokens": [
@@ -193,10 +201,10 @@
       ],
       "brandTokens": [
         "konner",
+        "knner",
         "sohnen",
-        "sōhnen",
-        "k&s",
-        "ks"
+        "shnen",
+        "ks9500"
       ]
     },
     {
@@ -247,7 +255,7 @@
           "shop": "olx",
           "kind": "olx",
           "query": "Fogo F 8001 iSG agregat",
-          "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
         }
       ],
       "coreTokens": [
@@ -308,7 +316,7 @@
           "shop": "olx",
           "kind": "olx",
           "query": "Fogo F 12000 iSG agregat",
-          "note": "robots.txt OLX jawnie zezwala na /api/v1/offers/ mimo blokady calego /api/. Jedno zapytanie na model, wlasny User-Agent, bez udawania przegladarki."
+          "note": "API /api/v1/offers/ (robots.txt OLX: Allow). Jedno zapytanie na model, wlasny User-Agent, limit 20 s. Ogloszenia z pelnym dopasowaniem modelu alarmuja progiem; czesciowe (marka + numer bez wariantu) tylko do obejrzenia."
         }
       ],
       "coreTokens": [

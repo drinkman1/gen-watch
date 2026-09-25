@@ -1,0 +1,18 @@
+{
+  "productId": "fogo-f12000isg",
+  "shop": "profimarket",
+  "track": "a",
+  "url": "https://profimarket.pl/f-12000-isg-agregat-pradotworczy-lpgbenzyna-inwerterowy-fogo-p-4545.html",
+  "finalUrl": "https://profimarket.pl/f-12000-isg-agregat-pradotworczy-lpgbenzyna-inwerterowy-fogo-p-4545.html",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:39:17.077Z",
+  "bytes": 68311,
+  "expect": {
+    "status": "ok",
+    "price": 11800,
+    "method": "microdata",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

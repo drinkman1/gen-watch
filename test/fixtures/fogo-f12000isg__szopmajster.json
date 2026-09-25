@@ -1,0 +1,18 @@
+{
+  "productId": "fogo-f12000isg",
+  "shop": "szopmajster",
+  "track": "a",
+  "url": "https://szopmajster.pl/sklep/fogo-f-12000-isg-inwerterowy-agregat-pradotworczy-dual-fuel-230-400-v/",
+  "finalUrl": "https://szopmajster.pl/sklep/fogo-f-12000-isg-inwerterowy-agregat-pradotworczy-dual-fuel-230-400-v/",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:40.531Z",
+  "bytes": 493752,
+  "expect": {
+    "status": "ok",
+    "price": 12400,
+    "method": "jsonld",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

@@ -4,6 +4,7 @@ import { scrapeSource } from "./adapters/index.mjs";
 import { closeBrowser } from "./fetch.mjs";
 import { evaluate, effectiveCost, fmt } from "./alerts.mjs";
 import { ensureDirs, readJson, writeJson, loadHistory, saveHistory, DATA_DIR } from "./store.mjs";
+import { localHealth, describeHealth, localAlertsForSnapshot, LOCAL_STATUS, DEFAULT_STALE_HOURS } from "./localstatus.mjs";
 
 const argv = process.argv.slice(2);
 const only = flag("--product");
@@ -30,6 +31,11 @@ if (!products.length) {
 ensureDirs();
 const state = readJson(path.join(DATA_DIR, "state.json"), {});
 const snapshot = { generatedAt: stamp, products: [], alerts: [], run: {} };
+
+// Puls toru B z galezi data. Tor A jest jedynym torem, ktory chodzi bez
+// laptopa, wiec to on musi zauwazyc, ze tor B zamilkl.
+const localStatus = readJson(path.join(DATA_DIR, LOCAL_STATUS), null);
+snapshot.local = localHealth(localStatus, nowMs, rules.localStaleHours || DEFAULT_STALE_HOURS);
 
 let sourcesOk = 0, sourcesBad = 0;
 
@@ -131,6 +137,17 @@ for (const product of products) {
 
 await closeBrowser();
 
+// Alerty progowe z toru B (Ceneo, Amazon, Komputronik) ida tym samym Issue co
+// wlasne - tor B nie ma jak sam zalozyc Issue, a mail ma przyjsc tak samo.
+// Przy --product nie ruszamy ich, zeby podglad jednego modelu nie zjadl alertu.
+if (!only) {
+  for (const { alert, key } of localAlertsForSnapshot(localStatus, state, cfg.products, nowMs)) {
+    snapshot.alerts.push(alert);
+    if (!dryRun) state[key] = nowMs;
+    console.log(`${alert.name.padEnd(36)} ${fmt(alert.price)} @ ${alert.shop}  <-- ALERT (tor B)`);
+  }
+}
+
 // Status calego przebiegu. "degraded" gdy padlo zrodlo, na ktorym polegamy;
 // awaria zrodla best-effort do tego nie wystarcza.
 const hardFailures = snapshot.products.flatMap((p) =>
@@ -158,5 +175,6 @@ if (!dryRun) {
   writeJson(path.join(DATA_DIR, "runs.json"), runs.slice(-500));
 }
 
-console.log(`\nStatus: ${snapshot.run.status} · zrodla ok ${sourcesOk}/${sourcesOk + sourcesBad} · alerty ${snapshot.alerts.length}`);
+console.log(`\n${describeHealth(snapshot.local)}${snapshot.local.stale ? "  <-- CISZA" : ""}`);
+console.log(`Status: ${snapshot.run.status} · zrodla ok ${sourcesOk}/${sourcesOk + sourcesBad} · alerty ${snapshot.alerts.length}`);
 if (snapshot.run.status === "error") process.exitCode = 1;

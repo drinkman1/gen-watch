@@ -1,0 +1,18 @@
+{
+  "productId": "fogo-f8001isg",
+  "shop": "mmasz",
+  "track": "a",
+  "url": "https://mmasz.pl/agregat-pradotworczy-inwerterowy-fogo-f8001isg-75kw-p-3348.html",
+  "finalUrl": "https://mmasz.pl/agregat-pradotworczy-inwerterowy-fogo-f8001isg-75kw-p-3348.html",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:34.989Z",
+  "bytes": 134114,
+  "expect": {
+    "status": "ok",
+    "price": 8969,
+    "method": "microdata",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}

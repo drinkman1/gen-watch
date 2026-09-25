@@ -1,0 +1,18 @@
+{
+  "productId": "ks-8100ieg",
+  "shop": "morele",
+  "track": "a",
+  "url": "https://www.morele.net/agregat-k-nner-s-hnen-ks8100ieg-8000-w-1-fazowy-8961241/",
+  "finalUrl": "https://www.morele.net/agregat-k-nner-s-hnen-ks8100ieg-8000-w-1-fazowy-8961241/",
+  "httpStatus": 200,
+  "via": "fetch",
+  "capturedAt": "2026-09-24T11:33:26.239Z",
+  "bytes": 506251,
+  "expect": {
+    "status": "ok",
+    "price": 6681.41,
+    "method": "jsonld",
+    "offers": 1
+  },
+  "issuesAtCapture": []
+}
