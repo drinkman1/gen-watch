@@ -2,9 +2,12 @@ name: gen-watch
 
 on:
   schedule:
-    # Co 3 godziny. GitHub uruchamia zadania z opoznieniem rzedu kilkunastu minut
-    # przy duzym obciazeniu - to normalne i nie jest awaria.
-    - cron: "0 */3 * * *"
+    # Co 3 godziny, o minucie 17, a nie o pelnej godzinie. GitHub przy duzym
+    # obciazeniu opoznia i PORZUCA zadania zaplanowane na :00 - przy "0 */3"
+    # 24-26.09.2026 odbywaly sie 4 przebiegi z 8, zawsze bez tego o 6:00 UTC,
+    # wiec raport dzienny przychodzil ok. 13:00 zamiast ok. 8:00. Kilkunastominutowe
+    # opoznienie nadal jest normalne i nie jest awaria.
+    - cron: "17 */3 * * *"
   workflow_dispatch:
     inputs:
       product:
