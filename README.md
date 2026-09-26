@@ -74,7 +74,7 @@ wiadomości, nie czyta Twoich. Wszystko poza wiadomością testową wysyła tor 
 |---|---|---|
 | **Alert** | cena poniżej progu, 7% pod medianą 30 dni albo nowe minimum; także alerty z toru B (Ceneo, Amazon, Komputronik) | ta sama cena w tym samym sklepie najwyżej raz na 24 h |
 | **Zmiana ceny** 📉📈 | najniższa cena modelu zmieniła się w dowolną stronę; z informacją, ile brakuje do progu | przy każdej zmianie |
-| **Raport dzienny** | pierwszy przebieg po 7:00 (czasu polskiego), czyli zwykle ok. 8:00 | raz dziennie |
+| **Raport dzienny** | pierwszy przebieg po 7:00 (czasu polskiego), czyli zwykle ok. 8:20 | raz dziennie |
 | **Awaria źródeł** | padło źródło, na którym polegamy (nie „best-effort”) | ten sam zestaw awarii raz na 24 h |
 | **Tor B milczy** | 36 h bez udanego skanu lokalnego | raz na 24 h |
 | **Test** | ręcznie: Actions → „telegram test” → Run workflow | na żądanie |
@@ -87,6 +87,11 @@ wiadomości, nie czyta Twoich. Wszystko poza wiadomością testową wysyła tor 
 - najtańszą ofertę rynkową z ostatniej doby (tor B, Issue `GEN_Scan`).
 
 Pod listą modeli: stan toru B, dni do terminu zakupu i link do dashboardu.
+
+Tor A startuje o minucie 17 co 3 h (`17 */3 * * *`), a nie o pełnej godzinie. GitHub przy
+obciążeniu porzuca zadania zaplanowane na :00. Przy dawnym `0 */3` odbywała się połowa
+przebiegów, a raport dzienny przychodził około 13:00. Gdy przebieg się spóźnia, raport
+przychodzi z pierwszym przebiegiem po 7:00, więc później, ale nie przepada.
 
 **Zmiana ceny nie reaguje na chwilową niedostępność sklepu.** Gdy KupAgregat nie
 odpowie, najniższa cena na moment skacze do Morele i zaraz wraca. Bot czeka wtedy na
