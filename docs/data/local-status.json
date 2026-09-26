@@ -1,0 +1,31 @@
+{
+  "ts": "2026-09-26T16:00:05.826Z",
+  "lastOkAt": "2026-09-26T16:00:05.826Z",
+  "code": "6f397f7",
+  "ok": 2,
+  "bad": 1,
+  "sources": [
+    {
+      "productId": "ks-8100ie-atsr",
+      "shop": "komputronik",
+      "status": "ok",
+      "price": 6590,
+      "issue": null
+    },
+    {
+      "productId": "ks-8100ieg",
+      "shop": "ceneo",
+      "status": "ok",
+      "price": 6819,
+      "issue": null
+    },
+    {
+      "productId": "ks-8100ieg",
+      "shop": "amazon",
+      "status": "noprice",
+      "price": null,
+      "issue": "zadna warstwa nie znalazla ceny · tytul: \"Generator Prądu Inwertorowy Agregat Prądotwórczy Gazowo-Benzynowy Könner & Söhne\" · 1183 kB, via fetch · tekst: \"Gener"
+    }
+  ],
+  "pendingAlerts": []
+}
