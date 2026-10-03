@@ -1,0 +1,31 @@
+{
+  "ts": "2026-10-02T05:00:05.523Z",
+  "lastOkAt": "2026-10-02T05:00:05.523Z",
+  "code": "6f397f7",
+  "ok": 3,
+  "bad": 0,
+  "sources": [
+    {
+      "productId": "ks-8100ie-atsr",
+      "shop": "komputronik",
+      "status": "ok",
+      "price": 6590,
+      "issue": null
+    },
+    {
+      "productId": "ks-8100ieg",
+      "shop": "ceneo",
+      "status": "ok",
+      "price": 6784.91,
+      "issue": null
+    },
+    {
+      "productId": "ks-8100ieg",
+      "shop": "amazon",
+      "status": "ok",
+      "price": 6499,
+      "issue": null
+    }
+  ],
+  "pendingAlerts": []
+}

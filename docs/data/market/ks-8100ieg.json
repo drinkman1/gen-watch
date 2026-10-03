@@ -1,0 +1,449 @@
+{
+  "productId": "ks-8100ieg",
+  "scans": [
+    {
+      "ts": "2026-09-26T16:00:05.826Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo",
+          "seenAt": "2026-09-26T16:00:05.826Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-09-27T05:00:03.685Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-27T05:00:03.685Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6898.75,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-27T05:00:03.685Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-09-27T16:00:05.660Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-27T16:00:05.660Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6898.75,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-27T16:00:05.660Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-09-28T05:00:03.640Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6784.91,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo",
+          "seenAt": "2026-09-28T05:00:03.640Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-09-28T16:00:04.738Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-28T16:00:04.738Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6898.75,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-28T16:00:04.738Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6784.91,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo",
+          "seenAt": "2026-09-28T16:00:04.738Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-09-29T05:00:04.267Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-29T05:00:04.267Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6898.75,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-29T05:00:04.267Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6784.91,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo",
+          "seenAt": "2026-09-29T05:00:04.267Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-09-29T16:00:05.863Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-29T16:00:05.863Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6898.75,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-29T16:00:05.863Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6784.91,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo",
+          "seenAt": "2026-09-29T16:00:05.863Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "inne",
+          "price": 6499,
+          "condition": "new",
+          "url": "https://www.amazon.pl/dp/B09DTLH354",
+          "title": "amazon",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: amazon, rabat 4%",
+          "seenAt": "2026-09-29T16:00:05.863Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-09-30T05:00:04.931Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-30T05:00:04.931Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6898.75,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-30T05:00:04.931Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6784.91,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo",
+          "seenAt": "2026-09-30T05:00:04.931Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-09-30T18:34:00.926Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-30T18:34:00.926Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6898.75,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-09-30T18:34:00.926Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "inne",
+          "price": 6499,
+          "condition": "new",
+          "url": "https://www.amazon.pl/dp/B09DTLH354",
+          "title": "amazon",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: amazon, rabat 4%",
+          "seenAt": "2026-09-30T18:34:00.926Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-10-01T05:00:06.035Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-10-01T05:00:06.035Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6898.75,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-10-01T05:00:06.035Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6784.91,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo",
+          "seenAt": "2026-10-01T05:00:06.035Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "inne",
+          "price": 6499,
+          "condition": "new",
+          "url": "https://www.amazon.pl/dp/B09DTLH354",
+          "title": "amazon",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: amazon, rabat 4%",
+          "seenAt": "2026-10-01T05:00:06.035Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-10-01T16:00:05.954Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6819,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-10-01T16:00:05.954Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6898.75,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo/nieznany",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo/nieznany",
+          "seenAt": "2026-10-01T16:00:05.954Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6784.91,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo",
+          "seenAt": "2026-10-01T16:00:05.954Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "inne",
+          "price": 6499,
+          "condition": "new",
+          "url": "https://www.amazon.pl/dp/B09DTLH354",
+          "title": "amazon",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: amazon, rabat 4%",
+          "seenAt": "2026-10-01T16:00:05.954Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-10-02T05:00:05.523Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "ceneo",
+          "price": 6784.91,
+          "condition": "new",
+          "url": "https://www.ceneo.pl/123009746",
+          "title": "ceneo",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: ceneo",
+          "seenAt": "2026-10-02T05:00:05.523Z"
+        },
+        {
+          "productId": "ks-8100ieg",
+          "site": "inne",
+          "price": 6499,
+          "condition": "new",
+          "url": "https://www.amazon.pl/dp/B09DTLH354",
+          "title": "amazon",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: amazon, rabat 4%",
+          "seenAt": "2026-10-02T05:00:05.523Z"
+        }
+      ]
+    }
+  ]
+}

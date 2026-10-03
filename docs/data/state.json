@@ -1,0 +1,49 @@
+{
+  "ks-8100ieg|morele|5688.26": 1788922751254,
+  "fogo-f12000isg|profimarket|11800": 1787575378696,
+  "market|ks-8100ieg|inne|3899": 1787731533673,
+  "fogo-f8001isg|studionarzedzi|8599": 1787760945680,
+  "telegram|degraded|Fogo F 12000 iSG/profimarket:mismatch,Könner & Söhnen KS 8100iE ATSR/kupagregat:error": 1789253450671,
+  "telegram|degraded|Fogo F 12000 iSG/profimarket:error": 1789787068185,
+  "telegram|degraded|Fogo F 12000 iSG/profimarket:mismatch": 1789235020252,
+  "telegram|degraded|Fogo F 12000 iSG/studionarzedzi:error,Fogo F 8001 iSG/studionarzedzi:error": 1790160432120,
+  "telegram|degraded|Könner & Söhnen KS 8100iE ATSR/alnar:error": 1790457336152,
+  "telegram|best|ks-8100ie-atsr": {
+    "price": 4999,
+    "shop": "kupagregat",
+    "ts": "2026-09-24T13:31:45.104Z"
+  },
+  "telegram|best|ks-8100ieg": {
+    "price": 6499,
+    "shop": "tooles",
+    "ts": "2026-09-24T13:31:45.104Z"
+  },
+  "telegram|best|ks-9500ie-s-atsr": {
+    "price": 9859,
+    "shop": "konner-sohnen",
+    "ts": "2026-09-24T13:31:45.104Z"
+  },
+  "telegram|best|fogo-f8001isg": {
+    "price": 8579,
+    "shop": "mmasz",
+    "ts": "2026-09-29T09:55:21.183Z"
+  },
+  "telegram|best|fogo-f12000isg": {
+    "price": 11800,
+    "shop": "profimarket",
+    "ts": "2026-09-27T17:01:52.480Z"
+  },
+  "telegram|daily|2026-09-24": 1790256705104,
+  "telegram|daily|2026-09-25": 1790334403573,
+  "telegram|daily|2026-09-26": 1790416347612,
+  "telegram|daily|2026-09-27": 1790486618910,
+  "telegram|degraded|Fogo F 12000 iSG/profimarket:blocked": 1790510933894,
+  "telegram|daily|2026-09-28": 1790573410188,
+  "fogo-f8001isg|mmasz|8579": 1790675683044,
+  "telegram|daily|2026-09-29": 1790675721183,
+  "telegram|daily|2026-09-30": 1790746711308,
+  "telegram|daily|2026-10-01": 1790849648679,
+  "telegram|daily|2026-10-02": 1790934725531,
+  "telegram|daily|2026-10-03": 1791005026867,
+  "telegram|local-stale|2026-10-02T05:00:05.523Z": 1791062528235
+}
