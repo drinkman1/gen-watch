@@ -1,0 +1,31 @@
+{
+  "ts": "2026-10-08T01:36:40.566Z",
+  "lastOkAt": "2026-10-08T01:36:40.566Z",
+  "code": "6f397f7",
+  "ok": 1,
+  "bad": 2,
+  "sources": [
+    {
+      "productId": "ks-8100ie-atsr",
+      "shop": "komputronik",
+      "status": "blocked",
+      "price": null,
+      "issue": "HTTP 403"
+    },
+    {
+      "productId": "ks-8100ieg",
+      "shop": "ceneo",
+      "status": "mismatch",
+      "price": null,
+      "issue": "strona porownywarki nie dotyczy tego produktu · tytul: \"Ceneo - porównanie cen, sklepy internetowe - kup najtaniej\" · 21 kB, via fetch · tekst: \"Ceneo - porówna"
+    },
+    {
+      "productId": "ks-8100ieg",
+      "shop": "amazon",
+      "status": "ok",
+      "price": 6499,
+      "issue": null
+    }
+  ],
+  "pendingAlerts": []
+}
