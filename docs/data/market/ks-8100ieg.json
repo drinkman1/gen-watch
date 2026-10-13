@@ -2,23 +2,6 @@
   "productId": "ks-8100ieg",
   "scans": [
     {
-      "ts": "2026-09-28T05:00:03.640Z",
-      "offers": [
-        {
-          "productId": "ks-8100ieg",
-          "site": "ceneo",
-          "price": 6784.91,
-          "condition": "new",
-          "url": "https://www.ceneo.pl/123009746",
-          "title": "ceneo",
-          "location": null,
-          "distanceKm": null,
-          "note": "sklep: ceneo",
-          "seenAt": "2026-09-28T05:00:03.640Z"
-        }
-      ]
-    },
-    {
       "ts": "2026-09-28T16:00:04.738Z",
       "offers": [
         {
@@ -418,6 +401,23 @@
           "distanceKm": null,
           "note": "sklep: amazon, rabat 4%",
           "seenAt": "2026-10-12T16:00:08.412Z"
+        }
+      ]
+    },
+    {
+      "ts": "2026-10-13T13:44:54.102Z",
+      "offers": [
+        {
+          "productId": "ks-8100ieg",
+          "site": "inne",
+          "price": 6499,
+          "condition": "new",
+          "url": "https://www.amazon.pl/dp/B09DTLH354",
+          "title": "amazon",
+          "location": null,
+          "distanceKm": null,
+          "note": "sklep: amazon, rabat 4%",
+          "seenAt": "2026-10-13T13:44:54.102Z"
         }
       ]
     }
